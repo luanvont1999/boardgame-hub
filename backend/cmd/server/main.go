@@ -120,6 +120,33 @@ func sendFCMNotification(token, title, body string) error {
 				"title": title,
 				"body":  body,
 			},
+			"webpush": map[string]interface{}{
+				"headers": map[string]string{
+					"Urgency": "high",
+				},
+				"notification": map[string]interface{}{
+					"title": title,
+					"body":  body,
+					"icon":  "/boardgame_pwa_icon_1784017090071.png",
+					"badge": "/boardgame_pwa_icon_1784017090071.png",
+				},
+			},
+			"apns": map[string]interface{}{
+				"headers": map[string]string{
+					"apns-priority": "10",
+				},
+				"payload": map[string]interface{}{
+					"aps": map[string]interface{}{
+						"alert": map[string]string{
+							"title": title,
+							"body":  body,
+						},
+						"sound":             "default",
+						"mutable-content":   1,
+						"content-available": 1,
+					},
+				},
+			},
 		},
 	}
 
