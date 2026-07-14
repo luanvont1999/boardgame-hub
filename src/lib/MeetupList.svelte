@@ -76,7 +76,17 @@
     }
   }
 
+  import ChatModal from './ChatModal.svelte';
+
   let isFilterModalOpen = $state<boolean>(false);
+  let selectedChatMeetup = $state<Meetup | null>(null);
+  let isChatOpen = $state<boolean>(false);
+
+  function openChat(meetup: Meetup) {
+    selectedChatMeetup = meetup;
+    isChatOpen = true;
+  }
+
 
 
   function openFilterModal() {
@@ -280,14 +290,27 @@
             </div>
           </div>
 
-          <button class="btn btn-secondary w-full" onclick={() => onSelectMeetup(meetup)}>
-            Xem vị trí trên bản đồ 🗺️
-          </button>
+          <div class="card-action-row">
+            <button class="btn btn-secondary action-btn" onclick={() => onSelectMeetup(meetup)}>
+              Vị trí 🗺️
+            </button>
+            <button class="btn btn-primary action-btn" onclick={() => openChat(meetup)}>
+              Chat 💬
+            </button>
+          </div>
         </div>
       {/each}
     {/if}
   </div>
+
+  <!-- Realtime Chat Modal Component -->
+  <ChatModal 
+    meetup={selectedChatMeetup} 
+    isOpen={isChatOpen} 
+    onClose={() => isChatOpen = false} 
+  />
 </div>
+
 
 <style>
   .meetup-list-container {
@@ -575,7 +598,19 @@
     font-size: 1.1rem;
   }
 
-  .w-full {
+  .card-action-row {
+
     width: 100%;
+    display: flex;
+    gap: 10px;
+    margin-top: auto;
+  }
+
+  .action-btn {
+    flex: 1;
+    padding: 10px 12px !important;
+    font-size: 0.9rem !important;
+    white-space: nowrap;
   }
 </style>
+

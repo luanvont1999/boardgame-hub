@@ -21,10 +21,12 @@ export default defineConfig({
       devOptions: {
         enabled: true
       },
+      workbox: {
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024 // 4MB to allow Mapbox & Firebase precaching
+      },
       manifest: {
         name: 'Boardgame Luna',
         short_name: 'BoardgameLuna',
-
         description: 'Khám phá và kết nối hội nhóm chơi Boardgame quanh bạn',
         theme_color: '#fffefb',
         background_color: '#fbf7ed',
