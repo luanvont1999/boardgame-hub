@@ -320,7 +320,11 @@ func main() {
 			return
 		}
 
-		log.Printf("[FCM] Đang gửi thông báo đẩy tới token: %s...", req.FCMToken[:15]+"...")
+		tokenHint := req.FCMToken
+		if len(tokenHint) > 15 {
+			tokenHint = tokenHint[:15] + "..."
+		}
+		log.Printf("[FCM] Đang gửi thông báo đẩy tới token: %s...", tokenHint)
 		err := sendFCMNotification(req.FCMToken, req.Title, req.Body)
 		if err != nil {
 			log.Printf("[FCM ERROR] Gửi push thất bại: %v", err)
