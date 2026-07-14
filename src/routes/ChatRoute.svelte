@@ -10,7 +10,7 @@
     isApprovedMember, requestToJoin, cancelJoinRequest, 
     subscribeToMeetupRequests, type MeetupRequest 
   } from '../lib/meetupService';
-  import { goBack, navigateToTab } from '../lib/router';
+  import { goBack, navigateToTab } from '../lib/router.svelte';
 
   interface Meetup {
     id: string;

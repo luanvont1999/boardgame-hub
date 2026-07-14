@@ -9,7 +9,7 @@
     cancelJoinRequest, 
     kickOrLeaveMember 
   } from './meetupService';
-  import { navigate } from './router';
+  import { navigate } from './router.svelte';
 
 
   interface Meetup {

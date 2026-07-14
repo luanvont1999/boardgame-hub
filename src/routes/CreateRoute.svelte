@@ -1,6 +1,6 @@
 <script lang="ts">
   import CreateMeetupForm from '../lib/CreateMeetupForm.svelte';
-  import { navigateToTab } from '../lib/router';
+  import { navigateToTab } from '../lib/router.svelte';
 
   interface Props {
     selectedLat: number | null;

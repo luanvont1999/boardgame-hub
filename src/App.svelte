@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { collection, onSnapshot, doc, setDoc } from 'firebase/firestore';
   import { db } from './lib/firebase';
-  import { currentRoute, navigateToTab, isChildRoute, type RouteParams } from './lib/router';
+  import { currentRoute, navigateToTab, isChildRoute, type RouteParams } from './lib/router.svelte';
 
   // Route components
   import FindRoute from './routes/FindRoute.svelte';

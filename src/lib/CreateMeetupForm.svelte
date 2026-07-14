@@ -3,7 +3,7 @@
   import { onAuthStateChanged, type User } from 'firebase/auth';
   import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
   import { auth, db } from './firebase';
-  import { navigate } from './router';
+  import { navigate } from './router.svelte';
 
 
 

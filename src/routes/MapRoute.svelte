@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
   import Map from '../lib/Map.svelte';
-  import { goBack, navigate } from '../lib/router';
+  import { goBack, navigate } from '../lib/router.svelte';
 
   interface Props {
     meetups: any[];

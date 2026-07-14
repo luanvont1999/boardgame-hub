@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { goBack } from '../lib/router';
+  import { goBack } from '../lib/router.svelte';
 
   interface Props {
     selectedCity: 'all' | 'HCM' | 'HN';

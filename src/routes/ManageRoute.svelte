@@ -7,7 +7,7 @@
     kickOrLeaveMember, 
     type MeetupRequest 
   } from '../lib/meetupService';
-  import { goBack } from '../lib/router';
+  import { goBack } from '../lib/router.svelte';
 
   interface Meetup {
     id: string;

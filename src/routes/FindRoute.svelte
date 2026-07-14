@@ -1,6 +1,6 @@
 <script lang="ts">
   import MeetupList from '../lib/MeetupList.svelte';
-  import { navigate } from '../lib/router';
+  import { navigate } from '../lib/router.svelte';
 
   interface Props {
     meetups: any[];
