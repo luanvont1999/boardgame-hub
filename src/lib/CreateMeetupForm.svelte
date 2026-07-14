@@ -3,6 +3,8 @@
   import { onAuthStateChanged, type User } from 'firebase/auth';
   import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
   import { auth, db } from './firebase';
+  import { navigate } from './router';
+
 
 
   // Svelte 5 props with bindable selectedLat, selectedLng, addressText and proximity current GPS
@@ -13,7 +15,6 @@
     userLng?: number | null;
     addressText?: string;
     onCreateSuccess: () => void;
-    onLocationInputClick?: () => void;
   }
   let { 
     selectedLat = $bindable(null), 
@@ -22,7 +23,6 @@
     userLng = null,
     addressText = $bindable(''),
     onCreateSuccess, 
-    onLocationInputClick 
   }: Props = $props();
 
   // State variables (Svelte 5 runes)
@@ -333,7 +333,7 @@
             <button 
               type="button" 
               class="btn btn-secondary btn-map-select" 
-              onclick={onLocationInputClick}
+              onclick={() => navigate({ name: 'map', mode: 'select' })}
               disabled={isSubmitting}
             >
               🗺️ Bản đồ

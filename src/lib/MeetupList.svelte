@@ -9,7 +9,7 @@
     cancelJoinRequest, 
     kickOrLeaveMember 
   } from './meetupService';
-  import ManageMembersModal from './ManageMembersModal.svelte';
+  import { navigate } from './router';
 
 
   interface Meetup {
@@ -30,7 +30,7 @@
     color: string;
   }
 
-  // Svelte 5 Bindable and Normal Props
+  // Props — no more callback props for chat/manage/map
   interface Props {
     meetups: Meetup[];
     userLat: number | null;
@@ -39,8 +39,6 @@
     selectedDistance: 'all' | '5' | '10';
     isTrackingGPS: boolean;
     gpsError: boolean;
-    onSelectMeetup: (meetup: Meetup) => void;
-    onOpenChat: (meetup: Meetup) => void;
   }
 
   let { 
@@ -51,15 +49,11 @@
     selectedDistance = $bindable('all'),
     isTrackingGPS,
     gpsError,
-    onSelectMeetup,
-    onOpenChat
   }: Props = $props();
 
 
   let currentUser = $state<User | null>(auth.currentUser);
   let unsubscribeAuth: (() => void) | null = null;
-  let selectedManageMeetup = $state<Meetup | null>(null);
-  let isManageOpen = $state<boolean>(false);
   let isActionProcessing = $state<boolean>(false);
 
   onMount(() => {
@@ -72,10 +66,6 @@
     if (unsubscribeAuth) unsubscribeAuth();
   });
 
-  function openManageModal(meetup: Meetup) {
-    selectedManageMeetup = meetup;
-    isManageOpen = true;
-  }
 
   async function handleJoinRequest(meetup: Meetup) {
     if (!currentUser || isActionProcessing) return;
@@ -150,29 +140,9 @@
 
   let isFilterModalOpen = $state<boolean>(false);
 
-
-
-
-  function openFilterModal() {
-    isFilterModalOpen = true;
-  }
-
-  function closeFilterModal() {
-    isFilterModalOpen = false;
-  }
-
-  function handleBackdropClick(e: MouseEvent) {
-    const target = e.target as HTMLElement;
-    if (target.classList.contains('cartoon-modal-backdrop')) {
-      closeFilterModal();
-    }
-  }
-
-  function handleBackdropKeyDown(e: KeyboardEvent) {
-    if (e.key === 'Escape' || e.key === 'Enter') {
-      closeFilterModal();
-    }
-  }
+  // Navigate instead of opening local modal for filter and map
+  function openFilter() { navigate({ name: 'filter' }); }
+  function openMap() { navigate({ name: 'map', mode: 'discover' }); }
 </script>
 
 <div class="meetup-list-container">
@@ -363,18 +333,18 @@
           </div>
 
           <div class="card-action-row">
-            <button class="btn btn-secondary action-btn" onclick={() => onSelectMeetup(meetup)}>
+            <button class="btn btn-secondary action-btn" onclick={() => navigate({ name: 'map', mode: 'discover' })}>
               Vị trí 🗺️
             </button>
 
             {#if userIsMember}
-              <button class="btn btn-primary action-btn" onclick={() => onOpenChat(meetup)}>
+              <button class="btn btn-primary action-btn" onclick={() => navigate({ name: 'chat', meetup })}>
                 Chat 💬
               </button>
             {/if}
 
             {#if userIsHost}
-              <button class="btn btn-success action-btn" onclick={() => openManageModal(meetup)}>
+              <button class="btn btn-success action-btn" onclick={() => navigate({ name: 'manage', meetup })}>
                 Duyệt 👥
               </button>
             {:else if userIsMember}
@@ -391,13 +361,6 @@
       {/each}
     {/if}
   </div>
-
-  <!-- Manage Members Modal Component for Host -->
-  <ManageMembersModal
-    meetup={selectedManageMeetup}
-    isOpen={isManageOpen}
-    onClose={() => isManageOpen = false}
-  />
 </div>
 
 
