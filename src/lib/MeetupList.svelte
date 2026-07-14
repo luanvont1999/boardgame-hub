@@ -138,8 +138,6 @@
     }
   }
 
-  let isFilterModalOpen = $state<boolean>(false);
-
   // Navigate instead of opening local modal for filter and map
   function openFilter() { navigate({ name: 'filter' }); }
   function openMap() { navigate({ name: 'map', mode: 'discover' }); }
@@ -170,112 +168,11 @@
       </div>
     </div>
 
-    <button type="button" class="btn btn-primary filter-trigger-btn" onclick={openFilterModal}>
+    <button type="button" class="btn btn-primary filter-trigger-btn" onclick={openFilter}>
       🔍 Bộ Lọc Tìm Kiếm ⚙️
     </button>
   </div>
 
-  <!-- Filter Modal Overlay -->
-  {#if isFilterModalOpen}
-    <div 
-      class="cartoon-modal-backdrop" 
-      onclick={handleBackdropClick} 
-      onkeydown={handleBackdropKeyDown}
-      role="button"
-      tabindex="0"
-    >
-      <div class="cartoon-card cartoon-modal-content filter-modal-box">
-        <div class="modal-header">
-          <h3>🔍 Bộ Lọc Tìm Kiếm Kèo Chơi</h3>
-          <button type="button" class="btn btn-close-modal" onclick={closeFilterModal}>✕</button>
-        </div>
-
-        <div class="modal-body filter-modal-body">
-          <!-- City Filter Group -->
-          <div class="modal-filter-section">
-            <h4 class="modal-filter-heading">🏙️ Chọn Khu Vực:</h4>
-            <div class="modal-filter-options">
-              <button 
-                type="button"
-                class="filter-option-btn {selectedCity === 'all' ? 'active' : ''}" 
-                onclick={() => selectedCity = 'all'}
-              >
-                🌐 Tất cả
-              </button>
-              <button 
-                type="button"
-                class="filter-option-btn {selectedCity === 'HCM' ? 'active' : ''}" 
-                onclick={() => selectedCity = 'HCM'}
-              >
-                🌆 TP. HCM
-              </button>
-              <button 
-                type="button"
-                class="filter-option-btn {selectedCity === 'HN' ? 'active' : ''}" 
-                onclick={() => selectedCity = 'HN'}
-              >
-                🏰 Hà Nội
-              </button>
-            </div>
-          </div>
-
-          <!-- Distance Filter Group -->
-          <div class="modal-filter-section">
-            <h4 class="modal-filter-heading">📍 Chọn Khoảng Cách Vị Trí:</h4>
-            <div class="modal-filter-options">
-              <button 
-                type="button"
-                class="filter-option-btn {selectedDistance === 'all' ? 'active' : ''}" 
-                onclick={() => selectedDistance = 'all'}
-              >
-                🗺️ Mọi khoảng cách
-              </button>
-              <button 
-                type="button"
-                class="filter-option-btn {selectedDistance === '5' ? 'active' : ''}" 
-                disabled={userLat === null}
-                onclick={() => selectedDistance = '5'}
-              >
-                ⚡ &lt; 5 km
-              </button>
-              <button 
-                type="button"
-                class="filter-option-btn {selectedDistance === '10' ? 'active' : ''}" 
-                disabled={userLat === null}
-                onclick={() => selectedDistance = '10'}
-              >
-                🚀 &lt; 10 km
-              </button>
-            </div>
-            {#if userLat === null}
-              <p class="modal-gps-hint">⚠️ Cần cho phép vị trí GPS trên Bản đồ để chọn khoảng cách theo km.</p>
-            {/if}
-          </div>
-
-          <!-- Geolocation Status badge inside modal -->
-          <div class="gps-status-bar">
-            {#if isTrackingGPS}
-              <span class="gps-dot pulsing"></span>
-              <span class="gps-text">Đang lấy vị trí GPS...</span>
-            {:else if userLat !== null}
-              <span class="gps-dot success"></span>
-              <span class="gps-text">Đã bật định vị GPS thành công</span>
-            {:else if gpsError}
-              <span class="gps-dot warning"></span>
-              <span class="gps-text">GPS bị từ chối hoặc không hỗ trợ.</span>
-            {/if}
-          </div>
-        </div>
-
-        <div class="modal-footer">
-          <span class="modal-footer-tip">💡 Nhấn áp dụng để cập nhật lại danh sách kèo.</span>
-          <button type="button" class="btn btn-primary" onclick={closeFilterModal}>
-            Áp dụng bộ lọc 🎯
-          </button>
-        </div>
-      </div>
-    </div>
-  {/if}
 
   <!-- Meetups Cards Grid -->
 
@@ -438,126 +335,6 @@
     font-size: 1rem;
     padding: 10px 20px;
     white-space: nowrap;
-  }
-
-  /* Filter Modal Box styling */
-  .filter-modal-box {
-    max-width: 520px !important;
-  }
-
-  .filter-modal-body {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-    text-align: left;
-  }
-
-  .modal-filter-section {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  .modal-filter-heading {
-    font-size: 1rem;
-    font-weight: 800;
-    color: var(--text-dark);
-  }
-
-  .modal-filter-options {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-  }
-
-  .filter-option-btn {
-    flex: 1;
-    min-width: 100px;
-    padding: 10px 14px;
-    font-size: 0.95rem;
-    font-weight: 700;
-    border-radius: var(--radius-md);
-    border: var(--border-width) solid var(--color-border);
-    background-color: #fff;
-    cursor: pointer;
-    box-shadow: 3px 3px 0 var(--color-border);
-    font-family: var(--font-family);
-    transition: all 0.1s ease;
-    min-height: 48px;
-  }
-
-  .filter-option-btn:hover:not(:disabled) {
-    transform: translate(-1px, -1px);
-    box-shadow: 4px 4px 0 var(--color-border);
-  }
-
-  .filter-option-btn:active:not(:disabled) {
-    transform: translate(2px, 2px);
-    box-shadow: 0 0 0 var(--color-border);
-  }
-
-  .filter-option-btn.active {
-    background-color: var(--pastel-yellow);
-    box-shadow: 4px 4px 0 var(--color-border);
-  }
-
-  .filter-option-btn:disabled {
-    background-color: #e5e7eb;
-    color: #9ca3af;
-    border-color: #d1d5db;
-    cursor: not-allowed;
-    box-shadow: 1px 1px 0 #d1d5db;
-  }
-
-  .modal-gps-hint {
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: #dc2626;
-    margin-top: 4px;
-  }
-
-
-  /* GPS status bar */
-  .gps-status-bar {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-top: 16px;
-    padding-top: 12px;
-    border-top: 1.5px dashed var(--color-border);
-  }
-
-  .gps-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    border: 1px solid var(--color-border);
-    display: inline-block;
-  }
-
-  .gps-dot.pulsing {
-    background-color: #eab308;
-    animation: gps-pulse 1s infinite;
-  }
-
-  .gps-dot.success {
-    background-color: #10b981;
-  }
-
-  .gps-dot.warning {
-    background-color: #ef4444;
-  }
-
-  @keyframes gps-pulse {
-    0% { transform: scale(0.9); opacity: 0.6; }
-    50% { transform: scale(1.15); opacity: 1; }
-    100% { transform: scale(0.9); opacity: 0.6; }
-  }
-
-  .gps-text {
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: var(--text-muted);
   }
 
   /* Cards Grid */
