@@ -1,7 +1,8 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { collection, onSnapshot, doc, setDoc } from "firebase/firestore";
-  import { db } from "./lib/firebase";
+  import { db, auth } from "./lib/firebase";
+  import { onAuthStateChanged, type User } from "firebase/auth";
   import {
     currentRoute,
     navigateToTab,
@@ -20,6 +21,23 @@
 
   // ── Global App State ──────────────────────────────────────────────────────
   let allMeetups = $state<any[]>([]);
+  let currentUser = $state<User | null>(auth.currentUser);
+
+  // Toasts state
+  interface Toast {
+    id: string;
+    message: string;
+    type: "info" | "success" | "warning";
+  }
+  let toasts = $state<Toast[]>([]);
+
+  function addToast(message: string, type: "info" | "success" | "warning" = "info") {
+    const id = Math.random().toString(36).substring(2, 9);
+    toasts = [...toasts, { id, message, type }];
+    setTimeout(() => {
+      toasts = toasts.filter((t) => t.id !== id);
+    }, 4000);
+  }
 
   // Location state shared across CreateRoute ↔ MapRoute
   let createLat = $state<number | null>(null);
@@ -44,6 +62,14 @@
   // ── Derived State ─────────────────────────────────────────────────────────
   let route = $derived(currentRoute());
   let childRoute = $derived(isChildRoute());
+
+  // Tính tổng số request đang chờ duyệt đối với các kèo do mình làm host
+  let totalPendingRequests = $derived.by(() => {
+    if (!currentUser) return 0;
+    return allMeetups
+      .filter((m) => m.hostUid === currentUser.uid || m.host_uid === currentUser.uid)
+      .reduce((sum, m) => sum + (Array.isArray(m.pendingUids) ? m.pendingUids.length : 0), 0);
+  });
 
   function calculateDistance(
     lat1: number,
@@ -192,9 +218,36 @@
   }
 
   // ── Lifecycle ─────────────────────────────────────────────────────────────
+  let prevPendingCount = 0;
+  let hasLoadedInitialMeetups = false;
+
+  $effect(() => {
+    // Đánh dấu đã load xong dữ liệu ban đầu khi allMeetups không còn rỗng
+    if (allMeetups.length > 0 && !hasLoadedInitialMeetups) {
+      setTimeout(() => {
+        prevPendingCount = totalPendingRequests;
+        hasLoadedInitialMeetups = true;
+      }, 500);
+      return;
+    }
+
+    if (hasLoadedInitialMeetups && totalPendingRequests > prevPendingCount) {
+      const diff = totalPendingRequests - prevPendingCount;
+      addToast(`🔔 Bạn có ${diff} yêu cầu tham gia kèo mới đang chờ duyệt!`, "info");
+    }
+
+    if (hasLoadedInitialMeetups) {
+      prevPendingCount = totalPendingRequests;
+    }
+  });
+
   onMount(() => {
     checkBackendHealth();
     listenToMeetupsRealtime();
+
+    const unsubAuth = onAuthStateChanged(auth, (user) => {
+      currentUser = user;
+    });
 
     if (navigator.geolocation) {
       isTrackingGPS = true;
@@ -214,6 +267,10 @@
     } else {
       gpsError = true;
     }
+
+    return () => {
+      unsubAuth();
+    };
   });
 
   // ── Filter Apply Handler ───────────────────────────────────────────────────
@@ -267,8 +324,13 @@
       <li>
         <button
           class="nav-link {route.name === 'create' ? 'active' : ''}"
-          onclick={() => navigateToTab("create")}>Lên kèo</button
+          onclick={() => navigateToTab("create")}
         >
+          Lên kèo
+          {#if totalPendingRequests > 0}
+            <span class="nav-badge">{totalPendingRequests}</span>
+          {/if}
+        </button>
       </li>
       <li>
         <button
@@ -341,6 +403,16 @@
   {/if}
 </main>
 
+<!-- Toast Container -->
+<div class="toast-container">
+  {#each toasts as toast (toast.id)}
+    <div class="cartoon-card toast-item {toast.type}">
+      <span class="toast-message">{toast.message}</span>
+      <button class="toast-close-btn" onclick={() => toasts = toasts.filter((t) => t.id !== toast.id)}>✕</button>
+    </div>
+  {/each}
+</div>
+
 <!-- ── Mobile Bottom Tab Bar (hidden for child routes) ──────────────────── -->
 {#if !childRoute}
   <nav class="mobile-nav-bar">
@@ -348,16 +420,22 @@
       class="mobile-nav-item {route.name === 'create' ? 'active' : ''}"
       onclick={() => navigateToTab("create")}
     >
-      <svg
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2.5"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-      >
-        <path d="M12 5v14M5 12h14" stroke-width="3" />
-      </svg>
+      <div style="position: relative; display: inline-block;">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          style="width: 24px; height: 24px;"
+        >
+          <path d="M12 5v14M5 12h14" stroke-width="3" />
+        </svg>
+        {#if totalPendingRequests > 0}
+          <span class="mobile-badge-count">{totalPendingRequests}</span>
+        {/if}
+      </div>
       <span>Lên kèo</span>
     </button>
 
@@ -400,3 +478,92 @@
     </button>
   </nav>
 {/if}
+
+<style>
+  .nav-badge {
+    background-color: #ef4444;
+    color: white;
+    font-size: 0.75rem;
+    font-weight: 800;
+    padding: 2px 6px;
+    border-radius: 10px;
+    border: 2px solid #1e1e24;
+    margin-left: 6px;
+    vertical-align: middle;
+    display: inline-block;
+  }
+  .mobile-badge-count {
+    position: absolute;
+    top: -5px;
+    right: -10px;
+    background-color: #ef4444;
+    color: white;
+    font-size: 0.7rem;
+    font-weight: 800;
+    padding: 1px 5px;
+    border-radius: 10px;
+    border: 1.5px solid #1e1e24;
+    line-height: 1;
+  }
+  .toast-container {
+    position: fixed;
+    top: 24px;
+    right: 24px;
+    z-index: 99999;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-width: 340px;
+    width: calc(100% - 48px);
+  }
+  .toast-item {
+    background-color: #fffdfb;
+    border: 3px solid #1e1e24;
+    box-shadow: 4px 4px 0px #1e1e24;
+    padding: 14px 18px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    animation: toast-slide-in 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  }
+  .toast-item.info {
+    border-left: 10px solid var(--pastel-blue, #a4f0fd);
+  }
+  .toast-message {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: #1e1e24;
+    line-height: 1.4;
+  }
+  .toast-close-btn {
+    background: none;
+    border: none;
+    font-size: 1.1rem;
+    font-weight: 800;
+    cursor: pointer;
+    color: #1e1e24;
+    padding: 0 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  @keyframes toast-slide-in {
+    from {
+      transform: translateY(-20px) scale(0.9);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0) scale(1);
+      opacity: 1;
+    }
+  }
+  @media (max-width: 768px) {
+    .toast-container {
+      top: auto;
+      bottom: 90px;
+      right: 24px;
+    }
+  }
+</style>
