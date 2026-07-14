@@ -303,9 +303,10 @@ func main() {
 		}
 
 		var req struct {
-			FCMToken string `json:"fcmToken"`
-			Title    string `json:"title"`
-			Body     string `json:"body"`
+			FCMToken  string   `json:"fcmToken"`
+			FCMTokens []string `json:"fcmTokens"`
+			Title     string   `json:"title"`
+			Body      string   `json:"body"`
 		}
 
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -314,35 +315,61 @@ func main() {
 			return
 		}
 
-		if req.FCMToken == "" || req.Title == "" || req.Body == "" {
+		if req.Title == "" || req.Body == "" {
 			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(map[string]string{"error": "Missing required fields (fcmToken, title, body)"})
+			json.NewEncoder(w).Encode(map[string]string{"error": "Missing required fields (title, body)"})
 			return
 		}
 
-		tokenHint := req.FCMToken
-		if len(tokenHint) > 15 {
-			tokenHint = tokenHint[:15] + "..."
+		// Thu thập tất cả các token cần gửi
+		var tokens []string
+		if req.FCMToken != "" {
+			tokens = append(tokens, req.FCMToken)
 		}
-		log.Printf("[FCM] Đang gửi thông báo đẩy tới token: %s...", tokenHint)
-		err := sendFCMNotification(req.FCMToken, req.Title, req.Body)
-		if err != nil {
-			log.Printf("[FCM ERROR] Gửi push thất bại: %v", err)
-			// Trả về OK với warning để tránh làm crash app client khi người dùng chưa cấu hình service-account file
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusOK)
+		if len(req.FCMTokens) > 0 {
+			tokens = append(tokens, req.FCMTokens...)
+		}
+
+		if len(tokens) == 0 {
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]string{"error": "At least one fcmToken or fcmTokens must be provided"})
+			return
+		}
+
+		log.Printf("[FCM] Đang gửi thông báo đẩy tới %d thiết bị...", len(tokens))
+
+		var sendErrors []string
+		for _, token := range tokens {
+			tokenHint := token
+			if len(tokenHint) > 15 {
+				tokenHint = tokenHint[:15] + "..."
+			}
+			log.Printf("[FCM] Đang gửi tới token: %s...", tokenHint)
+			err := sendFCMNotification(token, req.Title, req.Body)
+			if err != nil {
+				log.Printf("[FCM ERROR] Gửi push thất bại tới token %s: %v", tokenHint, err)
+				sendErrors = append(sendErrors, fmt.Sprintf("%s: %v", tokenHint, err))
+			}
+		}
+
+		// Trả về kết quả
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		
+		if len(sendErrors) > 0 && len(sendErrors) == len(tokens) {
+			// Tất cả đều thất bại
 			json.NewEncoder(w).Encode(map[string]interface{}{
 				"success": false,
-				"warning": "Không thể gửi push thật: " + err.Error() + ". Vui lòng đặt file firebase-service-account.json ở server.",
+				"warning": "Tất cả các lượt gửi đều thất bại. Vui lòng kiểm tra lại cấu hình hoặc token.",
+				"errors":  sendErrors,
 			})
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"success": true,
-			"message": "Đã gửi thông báo đẩy thành công!",
+			"message": fmt.Sprintf("Đã gửi thông báo đẩy thành công tới %d/%d thiết bị!", len(tokens)-len(sendErrors), len(tokens)),
+			"errors":  sendErrors,
 		})
 	})
 

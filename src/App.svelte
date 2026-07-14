@@ -386,6 +386,7 @@
       apiBase={API_BASE}
       {isChecking}
       onCheckHealth={checkBackendHealth}
+      {addToast}
     />
   {:else if route.name === "map"}
     <MapRoute

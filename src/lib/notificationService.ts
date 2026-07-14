@@ -1,4 +1,4 @@
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, collection, getDocs } from 'firebase/firestore';
 import { getToken, onMessage } from 'firebase/messaging';
 import { db, messaging } from './firebase';
 
@@ -80,5 +80,45 @@ export async function sendPushNotificationProxy(fcmToken: string, title: string,
     }
   } catch (err) {
     console.error('[FCM Proxy Error] Gửi thông báo thất bại:', err);
+  }
+}
+
+/**
+ * Gửi thông báo broadcast tới tất cả các thiết bị đã đăng ký.
+ */
+export async function broadcastPushNotifications(title: string, body: string): Promise<{ success: boolean; message: string; errors?: string[] }> {
+  try {
+    const querySnapshot = await getDocs(collection(db, 'users'));
+    const tokens: string[] = [];
+    
+    querySnapshot.forEach((doc) => {
+      const data = doc.data();
+      if (data && data.fcmToken) {
+        tokens.push(data.fcmToken);
+      }
+    });
+
+    if (tokens.length === 0) {
+      return { success: false, message: 'Không tìm thấy thiết bị nào có đăng ký FCM Token trên Firestore!' };
+    }
+
+    const API_BASE = import.meta.env.VITE_API_URL || '';
+    const res = await fetch(`${API_BASE}/api/send-notification`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ fcmTokens: tokens, title, body })
+    });
+    
+    const data = await res.json();
+    return {
+      success: data.success,
+      message: data.message || data.warning || 'Đã thực hiện gửi broadcast!',
+      errors: data.errors
+    };
+  } catch (err: any) {
+    console.error('[FCM Broadcast Error]:', err);
+    return { success: false, message: 'Lỗi gửi broadcast: ' + err.message };
   }
 }
