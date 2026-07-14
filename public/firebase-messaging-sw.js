@@ -17,13 +17,19 @@ const messaging = firebase.messaging();
 messaging.onBackgroundMessage((payload) => {
   console.log('[firebase-messaging-sw.js] Nhận thông báo ngầm:', payload);
   
-  const notificationTitle = payload.notification?.title || 'Boardgame Luna 🎲';
-  const notificationOptions = {
-    body: payload.notification?.body || 'Bạn có thông báo mới!',
-    icon: '/boardgame_pwa_icon_1784017090071.png',
-    badge: '/boardgame_pwa_icon_1784017090071.png',
-    data: payload.data || {}
-  };
+  // Nếu payload có trường 'notification', Firebase SDK sẽ tự động hiển thị thông báo hệ thống
+  // dựa trên cấu hình gửi từ Server (chứa icon, badge, v.v.).
+  // Việc tự gọi showNotification một lần nữa ở đây sẽ gây xung đột và kích hoạt thông báo mặc định 
+  // "Trang web này được cập nhật trong trang nền" của trình duyệt để cảnh báo.
+  if (!payload.notification) {
+    const notificationTitle = payload.data?.title || 'Boardgame Luna 🎲';
+    const notificationOptions = {
+      body: payload.data?.body || 'Bạn có thông báo mới!',
+      icon: '/boardgame_pwa_icon_1784017090071.png',
+      badge: '/boardgame_pwa_icon_1784017090071.png',
+      data: payload.data || {}
+    };
 
-  self.registration.showNotification(notificationTitle, notificationOptions);
+    self.registration.showNotification(notificationTitle, notificationOptions);
+  }
 });
