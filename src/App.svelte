@@ -98,6 +98,8 @@
     });
   });
 
+  const API_BASE = import.meta.env.VITE_API_URL || '';
+
   async function checkBackendHealth() {
     isChecking = true;
     apiStatus = "connecting";
@@ -105,7 +107,7 @@
     apiCode = null;
 
     try {
-      const res = await fetch("http://localhost:8080/api/health");
+      const res = await fetch(`${API_BASE}/api/health`);
       if (res.ok) {
         const data = await res.json();
         apiStatus = "online";
@@ -127,7 +129,7 @@
 
   async function fetchAllMeetups() {
     try {
-      const res = await fetch("http://localhost:8080/api/meetups");
+      const res = await fetch(`${API_BASE}/api/meetups`);
       if (res.ok) {
         allMeetups = await res.json();
       }
@@ -135,6 +137,7 @@
       console.error("Failed to fetch meetups from API:", err);
     }
   }
+
 
   async function reverseGeocodeTemp(targetLat: number, targetLng: number) {
     const token = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
@@ -421,7 +424,8 @@
           <div class="console-screen">
             <div class="console-text-row">
               <span class="console-label">SERVER ADDR:</span>
-              <span class="console-val">http://localhost:8080</span>
+              <span class="console-val">{API_BASE || 'Auto (Relative)'}</span>
+
             </div>
             <div class="console-text-row">
               <span class="console-label">ENDPOINT:</span>

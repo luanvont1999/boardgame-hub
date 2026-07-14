@@ -200,8 +200,9 @@
     try {
       const token = await getIdToken(user, true);
 
-      // Post to Go backend API
-      const res = await fetch('http://localhost:8080/api/meetups/create', {
+      const apiBase = import.meta.env.VITE_API_URL || '';
+      const res = await fetch(`${apiBase}/api/meetups/create`, {
+
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
