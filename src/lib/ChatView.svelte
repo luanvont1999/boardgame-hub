@@ -33,11 +33,10 @@
 
   interface Props {
     meetup: Meetup | null;
-    isOpen: boolean;
-    onClose: () => void;
+    onBack: () => void;
   }
 
-  let { meetup, isOpen, onClose }: Props = $props();
+  let { meetup, onBack }: Props = $props();
 
   let messages = $state<ChatMessage[]>([]);
   let newMessageText = $state<string>('');
@@ -51,6 +50,10 @@
     unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       currentUser = user;
     });
+
+    if (meetup?.id) {
+      subscribeToMessages(meetup.id);
+    }
   });
 
   onDestroy(() => {
@@ -58,16 +61,9 @@
     if (unsubscribeStore) unsubscribeStore();
   });
 
-  // Re-subscribe when meetup changes or modal opens
   $effect(() => {
-    if (isOpen && meetup?.id) {
+    if (meetup?.id) {
       subscribeToMessages(meetup.id);
-    } else {
-      if (unsubscribeStore) {
-        unsubscribeStore();
-        unsubscribeStore = null;
-      }
-      messages = [];
     }
   });
 
@@ -83,7 +79,6 @@
         ...doc.data()
       })) as ChatMessage[];
 
-      // Scroll to bottom on new messages
       tick().then(() => {
         if (messagesContainer) {
           messagesContainer.scrollTop = messagesContainer.scrollHeight;
@@ -117,19 +112,6 @@
     }
   }
 
-  function handleBackdropClick(e: MouseEvent) {
-    const target = e.target as HTMLElement;
-    if (target.classList.contains('cartoon-modal-backdrop')) {
-      onClose();
-    }
-  }
-
-  function handleBackdropKeyDown(e: KeyboardEvent) {
-    if (e.key === 'Escape' || e.key === 'Enter') {
-      onClose();
-    }
-  }
-
   function formatMessageTime(timestamp: any): string {
     if (!timestamp) return 'Vừa xong';
     try {
@@ -141,170 +123,218 @@
   }
 </script>
 
-{#if isOpen && meetup}
-  <div 
-    class="cartoon-modal-backdrop" 
-    onclick={handleBackdropClick} 
-    onkeydown={handleBackdropKeyDown}
-    role="button"
-    tabindex="0"
-  >
-    <div class="cartoon-card cartoon-modal-content chat-modal-box">
-      <!-- Modal Header -->
-      <div class="modal-header chat-modal-header">
-        <div class="chat-header-title">
-          <span class="chat-header-badge">💬 Chat Kèo</span>
-          <h3>{meetup.title}</h3>
-          <span class="chat-game-tag">🎲 {meetup.game}</span>
+<div class="fullscreen-chat-view">
+  {#if !meetup}
+    <div class="cartoon-card no-chat-card">
+      <h3>Chưa chọn kèo chơi nào! 😢</h3>
+      <button class="btn btn-primary" onclick={onBack}>Quay lại danh sách kèo</button>
+    </div>
+  {:else}
+    <!-- Top Fullscreen Header -->
+    <div class="chat-top-nav cartoon-card">
+      <button type="button" class="btn btn-secondary back-btn" onclick={onBack}>
+        ← Quay lại
+      </button>
+
+      <div class="chat-nav-details">
+        <div class="chat-title-row">
+          <h2 class="chat-meetup-title">{meetup.title}</h2>
+          <span class="game-badge">🎲 {meetup.game}</span>
         </div>
-        <button type="button" class="btn btn-close-modal" onclick={onClose}>✕</button>
-      </div>
-
-      <!-- Chat Messages Container -->
-      <div class="modal-body chat-modal-body" bind:this={messagesContainer}>
-        {#if messages.length === 0}
-          <div class="chat-empty-state">
-            <span class="empty-icon">💬</span>
-            <h4>Chưa có tin nhắn nào!</h4>
-            <p>Hãy gửi tin nhắn đầu tiên để hẹn giờ và trao đổi cùng hội nhóm nhé.</p>
-          </div>
-        {:else}
-          <div class="messages-list">
-            {#each messages as msg (msg.id)}
-              {@const isMine = currentUser && msg.senderUid === currentUser.uid}
-              {@const isHost = (meetup.host_uid || meetup.hostUid) === msg.senderUid}
-              
-              <div class="message-row {isMine ? 'my-message-row' : 'other-message-row'}">
-                <div class="message-bubble {isMine ? 'my-bubble' : 'other-bubble'}">
-                  <div class="message-author">
-                    <span class="author-name">{msg.senderName}</span>
-                    {#if isHost}
-                      <span class="host-badge">👑 Host</span>
-                    {/if}
-                  </div>
-                  <div class="message-text">{msg.text}</div>
-                  <div class="message-time">{formatMessageTime(msg.createdAt)}</div>
-                </div>
-              </div>
-            {/each}
-          </div>
-        {/if}
-      </div>
-
-      <!-- Footer Input Area -->
-      <div class="modal-footer chat-modal-footer">
-        {#if currentUser}
-          <form class="chat-input-form" onsubmit={handleSendMessage}>
-            <input 
-              type="text" 
-              class="cartoon-chat-input" 
-              placeholder="Nhập tin nhắn của bạn..." 
-              bind:value={newMessageText}
-              disabled={isSending}
-            />
-            <button 
-              type="submit" 
-              class="btn btn-primary send-btn" 
-              disabled={!newMessageText.trim() || isSending}
-            >
-              {isSending ? '...' : 'Gửi 🚀'}
-            </button>
-          </form>
-        {:else}
-          <div class="login-chat-prompt">
-            <span>🔒 Bạn cần đăng nhập (tab Hồ sơ) để gửi tin nhắn chat realtime.</span>
-          </div>
-        {/if}
+        <span class="host-info">
+          👑 Host: <strong>{meetup.host_name || meetup.hostName || 'Ẩn danh'}</strong>
+        </span>
       </div>
     </div>
-  </div>
-{/if}
+
+    <!-- Messages Container Area -->
+    <div class="chat-feed-area cartoon-card" bind:this={messagesContainer}>
+      {#if messages.length === 0}
+        <div class="chat-empty-state">
+          <span class="empty-icon">💬</span>
+          <h3>Chưa có tin nhắn nào trong kèo này!</h3>
+          <p>Hãy mở lời gửi tin nhắn đầu tiên để thảo luận và hẹn giờ chơi cùng mọi người nhé.</p>
+        </div>
+      {:else}
+        <div class="messages-list">
+          {#each messages as msg (msg.id)}
+            {@const isMine = currentUser && msg.senderUid === currentUser.uid}
+            {@const isHost = (meetup.host_uid || meetup.hostUid) === msg.senderUid}
+
+            <div class="message-row {isMine ? 'my-message-row' : 'other-message-row'}">
+              <div class="message-bubble {isMine ? 'my-bubble' : 'other-bubble'}">
+                <div class="message-author">
+                  <span class="author-name">{msg.senderName}</span>
+                  {#if isHost}
+                    <span class="host-badge">👑 Host</span>
+                  {/if}
+                </div>
+                <div class="message-text">{msg.text}</div>
+                <div class="message-time">{formatMessageTime(msg.createdAt)}</div>
+              </div>
+            </div>
+          {/each}
+        </div>
+      {/if}
+    </div>
+
+    <!-- Bottom Fullscreen Input Bar -->
+    <div class="chat-bottom-bar cartoon-card">
+      {#if currentUser}
+        <form class="chat-input-form" onsubmit={handleSendMessage}>
+          <input 
+            type="text" 
+            class="cartoon-chat-input" 
+            placeholder="Nhập tin nhắn..." 
+            bind:value={newMessageText}
+            disabled={isSending}
+          />
+          <button 
+            type="submit" 
+            class="btn btn-primary send-btn" 
+            disabled={!newMessageText.trim() || isSending}
+          >
+            {isSending ? '...' : 'Gửi 🚀'}
+          </button>
+        </form>
+      {:else}
+        <div class="login-chat-prompt">
+          <span>🔒 Bạn cần đăng nhập ở tab <strong>Hồ sơ</strong> để gửi tin nhắn chat.</span>
+        </div>
+      {/if}
+    </div>
+  {/if}
+</div>
 
 <style>
-  .chat-modal-box {
-    max-width: 600px !important;
-    height: 82vh;
+  .fullscreen-chat-view {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 120px);
+    gap: 16px;
+    margin-bottom: 20px;
   }
 
-  .chat-modal-header {
-    background-color: var(--pastel-cyan) !important;
+  @media (max-width: 768px) {
+    .fullscreen-chat-view {
+      height: calc(100vh - 160px);
+    }
   }
 
-  .chat-header-title {
+  .no-chat-card {
+    margin: auto;
+    text-align: center;
+    padding: 40px;
+    background-color: #fff;
+  }
+
+  .no-chat-card h3 {
+    margin-bottom: 16px;
+  }
+
+  /* Top Navigation Bar */
+  .chat-top-nav {
+    background-color: var(--pastel-cyan);
     display: flex;
     align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
+    gap: 16px;
+    padding: 14px 20px;
+    border-radius: var(--radius-lg);
+    box-shadow: 4px 4px 0 var(--color-border);
+    flex-shrink: 0;
+  }
+
+  .back-btn {
+    padding: 8px 16px !important;
+    font-size: 0.95rem !important;
+    white-space: nowrap;
+  }
+
+  .chat-nav-details {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
     text-align: left;
+    flex: 1;
+    min-width: 0;
   }
 
-  .chat-header-badge {
-    font-size: 0.8rem;
-    font-weight: 800;
-    padding: 3px 10px;
-    background-color: #fff;
-    border: var(--border-width-sm) solid var(--color-border);
-    border-radius: 100px;
-    box-shadow: 1.5px 1.5px 0 var(--color-border);
+  .chat-title-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
   }
 
-  .chat-header-title h3 {
-    font-size: 1.15rem;
+  .chat-meetup-title {
+    font-size: 1.3rem;
     font-weight: 800;
     margin: 0;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 260px;
+    color: var(--text-dark);
   }
 
-  .chat-game-tag {
-    font-size: 0.8rem;
-    font-weight: 700;
-    color: var(--text-dark);
+  .game-badge {
+    font-size: 0.82rem;
+    font-weight: 800;
     background-color: var(--pastel-yellow);
-    padding: 2px 8px;
+    padding: 2px 10px;
     border: var(--border-width-sm) solid var(--color-border);
     border-radius: var(--radius-sm);
+    box-shadow: 1.5px 1.5px 0 var(--color-border);
   }
 
-  .chat-modal-body {
-    padding: 16px;
-    background-color: var(--bg-secondary);
+  .host-info {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-dark);
+  }
+
+  /* Chat Feed Messages Area */
+  .chat-feed-area {
+    flex: 1;
+    background-color: var(--bg-primary);
+    overflow-y: auto;
+    padding: 20px;
     display: flex;
     flex-direction: column;
+    border-radius: var(--radius-lg);
+    box-shadow: 4px 4px 0 var(--color-border);
   }
 
   .chat-empty-state {
     margin: auto;
     text-align: center;
-    padding: 32px 16px;
+    padding: 40px 20px;
     color: var(--text-muted);
   }
 
   .empty-icon {
-    font-size: 3rem;
+    font-size: 3.5rem;
     display: block;
     margin-bottom: 12px;
   }
 
-  .chat-empty-state h4 {
-    font-size: 1.2rem;
-    margin-bottom: 6px;
+  .chat-empty-state h3 {
+    font-size: 1.3rem;
+    margin-bottom: 8px;
     color: var(--text-dark);
   }
 
   .chat-empty-state p {
-    font-size: 0.9rem;
+    font-size: 0.95rem;
     font-weight: 600;
-    max-width: 320px;
+    max-width: 360px;
     margin: 0 auto;
   }
 
   .messages-list {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 16px;
     width: 100%;
   }
 
@@ -322,11 +352,11 @@
   }
 
   .message-bubble {
-    max-width: 80%;
-    padding: 10px 14px;
-    border-radius: 18px;
+    max-width: 75%;
+    padding: 12px 16px;
+    border-radius: 20px;
     border: var(--border-width) solid var(--color-border);
-    box-shadow: 3px 3px 0 var(--color-border);
+    box-shadow: 4px 4px 0 var(--color-border);
     text-align: left;
     display: flex;
     flex-direction: column;
@@ -335,7 +365,7 @@
   }
 
   @keyframes bubble-pop {
-    from { transform: scale(0.85); opacity: 0; }
+    from { transform: scale(0.9); opacity: 0; }
     to { transform: scale(1); opacity: 1; }
   }
 
@@ -356,7 +386,7 @@
   }
 
   .author-name {
-    font-size: 0.8rem;
+    font-size: 0.82rem;
     font-weight: 800;
     color: var(--text-dark);
   }
@@ -371,7 +401,7 @@
   }
 
   .message-text {
-    font-size: 0.95rem;
+    font-size: 1rem;
     font-weight: 600;
     color: var(--text-dark);
     word-break: break-word;
@@ -379,52 +409,56 @@
   }
 
   .message-time {
-    font-size: 0.7rem;
+    font-size: 0.72rem;
     font-weight: 700;
     color: var(--text-muted);
     align-self: flex-end;
   }
 
-  /* Chat Input Footer */
-  .chat-modal-footer {
-    padding: 12px 16px !important;
+  /* Bottom Input Bar */
+  .chat-bottom-bar {
+    background-color: #fff;
+    padding: 14px 20px;
+    border-radius: var(--radius-lg);
+    box-shadow: 4px 4px 0 var(--color-border);
+    flex-shrink: 0;
   }
 
   .chat-input-form {
     display: flex;
     width: 100%;
-    gap: 10px;
+    gap: 12px;
   }
 
   .cartoon-chat-input {
     flex: 1;
-    padding: 10px 14px;
+    padding: 12px 16px;
     font-family: var(--font-family);
-    font-size: 0.95rem;
+    font-size: 1rem;
     font-weight: 600;
     border-radius: var(--radius-md);
     border: var(--border-width) solid var(--color-border);
-    background-color: #fff;
+    background-color: var(--bg-secondary);
     outline: none;
-    box-shadow: 2px 2px 0 var(--color-border);
+    box-shadow: 3px 3px 0 var(--color-border);
     transition: all 0.15s ease;
   }
 
   .cartoon-chat-input:focus {
-    box-shadow: 3.5px 3.5px 0 var(--color-border);
-    border-color: var(--color-border);
+    background-color: #fff;
+    box-shadow: 4px 4px 0 var(--color-border);
   }
 
   .send-btn {
-    padding: 10px 18px !important;
-    font-size: 0.95rem !important;
+    padding: 12px 24px !important;
+    font-size: 1rem !important;
     white-space: nowrap;
   }
 
   .login-chat-prompt {
     width: 100%;
     text-align: center;
-    font-size: 0.85rem;
+    font-size: 0.9rem;
     font-weight: 700;
     color: var(--text-muted);
     padding: 6px 0;

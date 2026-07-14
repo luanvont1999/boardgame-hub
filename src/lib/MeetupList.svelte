@@ -29,6 +29,7 @@
     isTrackingGPS: boolean;
     gpsError: boolean;
     onSelectMeetup: (meetup: Meetup) => void;
+    onOpenChat: (meetup: Meetup) => void;
   }
 
   let { 
@@ -39,8 +40,10 @@
     selectedDistance = $bindable('all'),
     isTrackingGPS,
     gpsError,
-    onSelectMeetup
+    onSelectMeetup,
+    onOpenChat
   }: Props = $props();
+
 
   function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
     const R = 6371; // km
@@ -76,16 +79,8 @@
     }
   }
 
-  import ChatModal from './ChatModal.svelte';
-
   let isFilterModalOpen = $state<boolean>(false);
-  let selectedChatMeetup = $state<Meetup | null>(null);
-  let isChatOpen = $state<boolean>(false);
 
-  function openChat(meetup: Meetup) {
-    selectedChatMeetup = meetup;
-    isChatOpen = true;
-  }
 
 
 
@@ -294,7 +289,7 @@
             <button class="btn btn-secondary action-btn" onclick={() => onSelectMeetup(meetup)}>
               Vị trí 🗺️
             </button>
-            <button class="btn btn-primary action-btn" onclick={() => openChat(meetup)}>
+            <button class="btn btn-primary action-btn" onclick={() => onOpenChat(meetup)}>
               Chat 💬
             </button>
           </div>
@@ -302,14 +297,8 @@
       {/each}
     {/if}
   </div>
-
-  <!-- Realtime Chat Modal Component -->
-  <ChatModal 
-    meetup={selectedChatMeetup} 
-    isOpen={isChatOpen} 
-    onClose={() => isChatOpen = false} 
-  />
 </div>
+
 
 
 <style>

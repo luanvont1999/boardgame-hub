@@ -8,6 +8,8 @@
   import MeetupList from "./lib/MeetupList.svelte";
 
 
+  import ChatView from "./lib/ChatView.svelte";
+
   // Master meetups data state
   let allMeetups = $state<any[]>([]);
 
@@ -16,6 +18,9 @@
   let clickedLat = $state<number | null>(null);
   let clickedLng = $state<number | null>(null);
   let selectedAddressText = $state<string>("");
+
+  // Chat route state
+  let chatMeetup = $state<any>(null);
 
   // Temporary states for transactional Modal location selection
   let tempLat = $state<number | null>(null);
@@ -32,7 +37,17 @@
   let gpsError = $state<boolean>(false);
 
   // Active navigation tab
-  let activeTab = $state<"find" | "create" | "profile">("find");
+  let activeTab = $state<"find" | "create" | "profile" | "chat">("find");
+
+  function handleOpenChat(meetup: any) {
+    chatMeetup = meetup;
+    activeTab = "chat";
+  }
+
+  function handleBackFromChat() {
+    activeTab = "find";
+  }
+
 
   // Smart location selection mode
   let isSelectingLocation = $state<boolean>(false);
@@ -467,9 +482,10 @@
         {isTrackingGPS}
         {gpsError}
         onSelectMeetup={handleSelectMeetup}
+        onOpenChat={handleOpenChat}
       />
     </section>
-  {:else}
+  {:else if activeTab !== "chat"}
     <!-- Content header when in other tabs -->
     <section class="hero-section" style="padding: 24px 0 16px;">
       <span class="badge-tag">🎲 Boardgame Luna</span>
@@ -477,7 +493,13 @@
     </section>
   {/if}
 
+  {#if activeTab === "chat"}
+    <!-- Fullscreen Dedicated Chat Route -->
+    <ChatView meetup={chatMeetup} onBack={handleBackFromChat} />
+  {/if}
+
   {#if activeTab === "create"}
+
     <!-- Tab Lên Kèo -->
     <section id="create-meetup-tab" style="padding-bottom: 40px;">
       <CreateMeetupForm
