@@ -22,8 +22,9 @@ export default defineConfig({
         enabled: true
       },
       manifest: {
-        name: 'Boardgame Hub',
-        short_name: 'BoardgameHub',
+        name: 'Boardgame Luna',
+        short_name: 'BoardgameLuna',
+
         description: 'Khám phá và kết nối hội nhóm chơi Boardgame quanh bạn',
         theme_color: '#fffefb',
         background_color: '#fbf7ed',

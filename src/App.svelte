@@ -301,7 +301,8 @@
         <circle cx="8" cy="16" r="1.5" fill="#fff" />
         <circle cx="12" cy="12" r="1.5" fill="#fff" />
       </svg>
-      <span>Boardgame Hub</span>
+      <span>Boardgame Luna</span>
+
     </div>
 
     <ul class="nav-links">
@@ -388,7 +389,8 @@
   {:else}
     <!-- Content header when in other tabs -->
     <section class="hero-section" style="padding: 24px 0 16px;">
-      <span class="badge-tag">🎲 Boardgame Hub</span>
+      <span class="badge-tag">🎲 Boardgame Luna</span>
+
     </section>
   {/if}
 

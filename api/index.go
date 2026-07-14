@@ -34,7 +34,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(HealthResponse{
 			Status:  "OK",
-			Message: "Boardgame Hub API is running smoothly on Vercel",
+			Message: "Boardgame Luna API is running smoothly on Vercel",
+
 		})
 	})
 
