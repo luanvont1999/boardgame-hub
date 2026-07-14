@@ -18,6 +18,9 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'apple-touch-icon.png', 'icons.svg'],
+      devOptions: {
+        enabled: true
+      },
       manifest: {
         name: 'Boardgame Hub',
         short_name: 'BoardgameHub',
