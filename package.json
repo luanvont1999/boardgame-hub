@@ -4,16 +4,20 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "concurrently -k -n \"GO,VITE\" -c \"cyan.bold,yellow.bold\" \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:frontend": "vite",
+    "dev:backend": "go run backend/cmd/server/main.go",
     "build": "vite build",
     "preview": "vite preview",
     "check": "svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.node.json"
+
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^7.1.2",
     "@tsconfig/svelte": "^5.0.8",
     "@types/mapbox-gl": "^3.4.1",
     "@types/node": "^24.13.2",
+    "concurrently": "^10.0.3",
     "svelte": "^5.56.4",
     "svelte-check": "^4.7.1",
     "typescript": "~6.0.2",
