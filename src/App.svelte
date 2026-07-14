@@ -187,6 +187,7 @@
 
   {:else if route.name === 'create'}
     <CreateRoute
+      meetups={allMeetups}
       bind:selectedLat={createLat}
       bind:selectedLng={createLng}
       bind:addressText={createAddressText}

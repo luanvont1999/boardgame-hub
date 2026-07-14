@@ -1,12 +1,12 @@
 <script lang="ts">
-  import MeetupList from '../lib/MeetupList.svelte';
-  import { navigate } from '../lib/router.svelte';
+  import MeetupList from "../lib/MeetupList.svelte";
+  import { navigate } from "../lib/router.svelte";
 
   interface Props {
     meetups: any[];
     filteredMeetups: any[];
-    selectedCity: 'all' | 'HCM' | 'HN';
-    selectedDistance: 'all' | '5' | '10';
+    selectedCity: "all" | "HCM" | "HN";
+    selectedDistance: "all" | "5" | "10";
     userLat: number | null;
     userLng: number | null;
     isTrackingGPS: boolean;
@@ -16,8 +16,8 @@
   let {
     meetups,
     filteredMeetups,
-    selectedCity = $bindable('all'),
-    selectedDistance = $bindable('all'),
+    selectedCity = $bindable("all"),
+    selectedDistance = $bindable("all"),
     userLat,
     userLng,
     isTrackingGPS,
@@ -27,7 +27,7 @@
 
 <section id="find-route" style="padding-bottom: 40px;">
   <!-- Hero Card -->
-  <div
+  <!-- <div
     class="cartoon-card hero-discover-card"
   >
     <span class="badge-tag" style="background-color: #fff; margin-bottom: 12px;">Bản Đồ Hội Nhóm 🗺️</span>
@@ -55,7 +55,7 @@
         {/if}
       </button>
     </div>
-  </div>
+  </div> -->
 
   <!-- Meetup Cards List -->
   <MeetupList
