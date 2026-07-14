@@ -33,14 +33,16 @@
     return unsub;
   });
 
-  // Kèo của tôi: do mình làm host hoặc mình là thành viên đã được duyệt
+  // Kèo của tôi: do mình làm host, thành viên đã được duyệt, hoặc đang xin chờ duyệt (pending)
   let myActiveMeetups = $derived(
     meetups.filter((m) => {
       if (!currentUser) return false;
       const isHost = m.hostUid === currentUser.uid || m.host_uid === currentUser.uid;
       const approvedList = m.approvedUids || [];
       const isMember = approvedList.includes(currentUser.uid);
-      return isHost || isMember;
+      const pendingList = m.pendingUids || [];
+      const isPending = pendingList.includes(currentUser.uid);
+      return isHost || isMember || isPending;
     })
   );
 

@@ -188,6 +188,7 @@
         {@const distance = userLat !== null && userLng !== null ? calculateDistance(userLat, userLng, meetup.lat, meetup.lng) : null}
         {@const userIsHost = isHost(meetup, currentUser?.uid)}
         {@const userIsMember = isApprovedMember(meetup, currentUser?.uid)}
+        {@const userIsPending = Array.isArray(meetup.pendingUids) && meetup.pendingUids.includes(currentUser?.uid || '')}
 
         
         <div class="cartoon-card meetup-item-card" style="border-top: 10px solid {meetup.color};">
@@ -205,6 +206,8 @@
               <span class="membership-badge host-tag">👑 Host</span>
             {:else if userIsMember}
               <span class="membership-badge member-tag">✅ Đã tham gia</span>
+            {:else if userIsPending}
+              <span class="membership-badge pending-tag">⏳ Chờ duyệt</span>
             {/if}
           </div>
 
@@ -247,6 +250,10 @@
             {:else if userIsMember}
               <button class="btn btn-secondary action-btn leave-btn" onclick={() => handleLeave(meetup)} disabled={isActionProcessing}>
                 Rời 🚪
+              </button>
+            {:else if userIsPending}
+              <button class="btn btn-secondary action-btn cancel-btn" onclick={() => handleCancel(meetup)} disabled={isActionProcessing}>
+                {isActionProcessing ? '...' : 'Hủy ✕'}
               </button>
             {:else if currentUser}
               <button class="btn btn-success action-btn" onclick={() => handleJoinRequest(meetup)} disabled={isActionProcessing}>
@@ -463,6 +470,14 @@
 
   .member-tag {
     background-color: var(--pastel-green);
+  }
+
+  .pending-tag {
+    background-color: var(--pastel-orange, #ffc078);
+  }
+
+  .cancel-btn {
+    background-color: #fca5a5 !important; /* màu đỏ pastel nhẹ nhàng */
   }
 </style>
 

@@ -47,6 +47,7 @@ export function isHost(meetup: any, userUid: string | null | undefined): boolean
  */
 export async function requestToJoin(meetupId: string, user: User) {
   const reqRef = doc(db, 'meetups', meetupId, 'requests', user.uid);
+  const meetupRef = doc(db, 'meetups', meetupId);
   const name = user.displayName || user.email || 'Thành viên';
   
   await setDoc(reqRef, {
@@ -55,6 +56,10 @@ export async function requestToJoin(meetupId: string, user: User) {
     status: 'pending',
     createdAt: serverTimestamp()
   });
+
+  await updateDoc(meetupRef, {
+    pendingUids: arrayUnion(user.uid)
+  });
 }
 
 /**
@@ -62,7 +67,12 @@ export async function requestToJoin(meetupId: string, user: User) {
  */
 export async function cancelJoinRequest(meetupId: string, userUid: string) {
   const reqRef = doc(db, 'meetups', meetupId, 'requests', userUid);
+  const meetupRef = doc(db, 'meetups', meetupId);
+
   await deleteDoc(reqRef);
+  await updateDoc(meetupRef, {
+    pendingUids: arrayRemove(userUid)
+  });
 }
 
 /**
@@ -75,6 +85,7 @@ export async function approveMember(meetupId: string, playerUid: string) {
   await updateDoc(reqRef, { status: 'approved' });
   await updateDoc(meetupRef, {
     approvedUids: arrayUnion(playerUid),
+    pendingUids: arrayRemove(playerUid),
     playersCount: increment(1)
   });
 }
@@ -84,7 +95,12 @@ export async function approveMember(meetupId: string, playerUid: string) {
  */
 export async function rejectMember(meetupId: string, playerUid: string) {
   const reqRef = doc(db, 'meetups', meetupId, 'requests', playerUid);
+  const meetupRef = doc(db, 'meetups', meetupId);
+
   await updateDoc(reqRef, { status: 'rejected' });
+  await updateDoc(meetupRef, {
+    pendingUids: arrayRemove(playerUid)
+  });
 }
 
 /**
@@ -97,6 +113,7 @@ export async function kickOrLeaveMember(meetupId: string, playerUid: string) {
   await deleteDoc(reqRef);
   await updateDoc(meetupRef, {
     approvedUids: arrayRemove(playerUid),
+    pendingUids: arrayRemove(playerUid), // defensive cleanup
     playersCount: increment(-1)
   });
 }
