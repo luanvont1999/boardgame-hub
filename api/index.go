@@ -8,8 +8,9 @@ import (
 	"strconv"
 	"time"
 
-	"boardgame-hub/backend/internal/middleware"
-	"boardgame-hub/backend/internal/store"
+	"boardgame-hub/backend/pkg/middleware"
+	"boardgame-hub/backend/pkg/store"
+
 )
 
 type HealthResponse struct {
