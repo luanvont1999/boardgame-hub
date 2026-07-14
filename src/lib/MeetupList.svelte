@@ -118,6 +118,17 @@
     isActionProcessing = true;
     try {
       await kickOrLeaveMember(meetup.id, currentUser.uid);
+
+      // Gửi thông báo đẩy tới Host thông báo người chơi rời kèo
+      if (meetup.hostFcmToken) {
+        const playerName = currentUser.displayName || currentUser.email || 'Thành viên';
+        sendPushNotificationProxy(
+          meetup.hostFcmToken,
+          "🚪 Thành viên rời kèo",
+          `${playerName} đã rời khỏi kèo "${meetup.title}" của bạn.`,
+          `/?route=manage&meetupId=${meetup.id}`
+        );
+      }
     } catch (err) {
       console.error("Leave meetup error:", err);
     } finally {
