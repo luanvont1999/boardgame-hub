@@ -320,6 +320,21 @@
           const title = payload.notification?.title || "Thông báo mới";
           const body = payload.notification?.body || "";
           addToast(`🔔 ${title}: ${body}`, "info");
+
+          // Hiển thị thông báo hệ thống (system notification banner) ở chế độ Foreground
+          if (Notification.permission === 'granted') {
+            const clickAction = payload.data?.clickAction || '/';
+            const notification = new Notification(title, {
+              body: body,
+              icon: '/boardgame_pwa_icon_1784017090071.png',
+              tag: 'foreground-push'
+            });
+            notification.onclick = () => {
+              window.focus();
+              handleDeepLink(clickAction);
+              notification.close();
+            };
+          }
         });
       }
     });
