@@ -1,16 +1,25 @@
 package handler
 
 import (
+	"bytes"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
+	"errors"
+	"fmt"
+	"io/ioutil"
 	"log"
 	"math/rand"
 	"net/http"
+	"net/url"
+	"os"
 	"strconv"
 	"time"
 
 	"boardgame-hub/backend/pkg/middleware"
 	"boardgame-hub/backend/pkg/store"
 
+	"github.com/golang-jwt/jwt/v5"
 )
 
 type HealthResponse struct {
@@ -18,9 +27,174 @@ type HealthResponse struct {
 	Message string `json:"message"`
 }
 
+type ServiceAccount struct {
+	Type        string `json:"type"`
+	ProjectID   string `json:"project_id"`
+	PrivateKey  string `json:"private_key"`
+	ClientEmail string `json:"client_email"`
+	TokenURI    string `json:"token_uri"`
+}
+
 var (
 	meetupStore = store.NewMeetupStore()
 )
+
+func getAccessToken() (string, error) {
+	var sa ServiceAccount
+
+	// Thử đọc trực tiếp nội dung JSON từ biến môi trường
+	saJSON := os.Getenv("FIREBASE_SERVICE_ACCOUNT_JSON")
+	if saJSON != "" {
+		if err := json.Unmarshal([]byte(saJSON), &sa); err != nil {
+			return "", fmt.Errorf("lỗi unmarshal service account từ biến môi trường: %v", err)
+		}
+	} else {
+		// Fallback đọc file cục bộ (local dev)
+		saPath := os.Getenv("FIREBASE_SERVICE_ACCOUNT_JSON_PATH")
+		if saPath == "" {
+			saPath = "firebase-service-account.json"
+		}
+
+		data, err := ioutil.ReadFile(saPath)
+		if err != nil {
+			return "", fmt.Errorf("không thể đọc file service account %s: %v", saPath, err)
+		}
+
+		if err := json.Unmarshal(data, &sa); err != nil {
+			return "", fmt.Errorf("lỗi unmarshal service account từ file: %v", err)
+		}
+	}
+
+	// Parse private key
+	block, _ := pem.Decode([]byte(sa.PrivateKey))
+	if block == nil {
+		return "", errors.New("lỗi decode PEM private key")
+	}
+
+	privKey, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+	if err != nil {
+		return "", fmt.Errorf("lỗi parse private key: %v", err)
+	}
+
+	// Tạo claims
+	now := time.Now()
+	claims := jwt.MapClaims{
+		"iss":   sa.ClientEmail,
+		"sub":   sa.ClientEmail,
+		"aud":   sa.TokenURI,
+		"scope": "https://www.googleapis.com/auth/firebase.messaging",
+		"iat":   now.Unix(),
+		"exp":   now.Add(time.Hour).Unix(),
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
+	jwtToken, err := token.SignedString(privKey)
+	if err != nil {
+		return "", fmt.Errorf("lỗi ký token: %v", err)
+	}
+
+	// Request access token từ Google
+	resp, err := http.PostForm(sa.TokenURI, url.Values{
+		"grant_type": {"urn:ietf:params:oauth:grant-type:jwt-bearer"},
+		"assertion":  {jwtToken},
+	})
+	if err != nil {
+		return "", fmt.Errorf("lỗi gửi request lấy access token: %v", err)
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		AccessToken string `json:"access_token"`
+		Error       string `json:"error"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", fmt.Errorf("lỗi decode access token response: %v", err)
+	}
+
+	if result.Error != "" {
+		return "", fmt.Errorf("lỗi Google OAuth: %s", result.Error)
+	}
+
+	return result.AccessToken, nil
+}
+
+func sendFCMNotification(token, title, body, clickAction string) error {
+	accessToken, err := getAccessToken()
+	if err != nil {
+		return fmt.Errorf("lỗi lấy access token: %v", err)
+	}
+
+	projectID := "boardgame-hub-7f7a2"
+	urlStr := fmt.Sprintf("https://fcm.googleapis.com/v1/projects/%s/messages:send", projectID)
+
+	payload := map[string]interface{}{
+		"message": map[string]interface{}{
+			"token": token,
+			"notification": map[string]string{
+				"title": title,
+				"body":  body,
+			},
+			"data": map[string]string{
+				"clickAction": clickAction,
+			},
+			"webpush": map[string]interface{}{
+				"headers": map[string]string{
+					"Urgency": "high",
+				},
+				"notification": map[string]interface{}{
+					"title": title,
+					"body":  body,
+				},
+				"fcm_options": map[string]string{
+					"link": clickAction,
+				},
+			},
+			"apns": map[string]interface{}{
+				"headers": map[string]string{
+					"apns-priority": "10",
+				},
+				"payload": map[string]interface{}{
+					"aps": map[string]interface{}{
+						"alert": map[string]string{
+							"title": title,
+							"body":  body,
+						},
+						"sound":             "default",
+						"mutable-content":   1,
+						"content-available": 1,
+					},
+				},
+			},
+		},
+	}
+
+	payloadData, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("lỗi marshal payload: %v", err)
+	}
+
+	req, err := http.NewRequest("POST", urlStr, bytes.NewBuffer(payloadData))
+	if err != nil {
+		return fmt.Errorf("lỗi tạo request: %v", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", accessToken))
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("lỗi gửi request tới FCM: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := ioutil.ReadAll(resp.Body)
+		return fmt.Errorf("FCM API trả về lỗi status %d: %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	return nil
+}
 
 func Handler(w http.ResponseWriter, r *http.Request) {
 	rand.Seed(time.Now().UnixNano())
@@ -35,7 +209,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(HealthResponse{
 			Status:  "OK",
 			Message: "Boardgame Luna API is running smoothly on Vercel",
-
 		})
 	})
 
@@ -147,6 +320,97 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(newMeetup)
 	})
 	mux.Handle("/api/meetups/create", middleware.AuthMiddleware(createMeetupHandler))
+
+	// Public endpoint for sending push notifications via Go Backend Proxy (Vercel Serverless)
+	mux.HandleFunc("/api/send-notification", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		if r.Method != http.MethodPost {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			json.NewEncoder(w).Encode(map[string]string{"error": "Method not allowed"})
+			return
+		}
+
+		var req struct {
+			FCMToken    string   `json:"fcmToken"`
+			FCMTokens   []string `json:"fcmTokens"`
+			Title       string   `json:"title"`
+			Body        string   `json:"body"`
+			ClickAction string   `json:"clickAction"`
+		}
+
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]string{"error": "Invalid request body"})
+			return
+		}
+
+		if req.Title == "" || req.Body == "" {
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]string{"error": "Missing required fields (title, body)"})
+			return
+		}
+
+		if req.ClickAction == "" {
+			req.ClickAction = "/"
+		}
+
+		// Thu thập tất cả các token cần gửi
+		var tokens []string
+		if req.FCMToken != "" {
+			tokens = append(tokens, req.FCMToken)
+		}
+		if len(req.FCMTokens) > 0 {
+			tokens = append(tokens, req.FCMTokens...)
+		}
+
+		if len(tokens) == 0 {
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]string{"error": "At least one fcmToken or fcmTokens must be provided"})
+			return
+		}
+
+		log.Printf("[FCM Vercel] Đang gửi thông báo đẩy tới %d thiết bị...", len(tokens))
+
+		var sendErrors []string
+		for _, token := range tokens {
+			tokenHint := token
+			if len(tokenHint) > 15 {
+				tokenHint = tokenHint[:15] + "..."
+			}
+			log.Printf("[FCM Vercel] Đang gửi tới token: %s...", tokenHint)
+			err := sendFCMNotification(token, req.Title, req.Body, req.ClickAction)
+			if err != nil {
+				log.Printf("[FCM ERROR] Gửi push thất bại tới token %s: %v", tokenHint, err)
+				sendErrors = append(sendErrors, fmt.Sprintf("%s: %v", tokenHint, err))
+			}
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+
+		if len(sendErrors) > 0 && len(sendErrors) == len(tokens) {
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"success": false,
+				"warning": "Tất cả các lượt gửi đều thất bại. Vui lòng kiểm tra lại cấu hình hoặc token.",
+				"errors":  sendErrors,
+			})
+			return
+		}
+
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": true,
+			"message": fmt.Sprintf("Đã gửi thông báo đẩy thành công tới %d/%d thiết bị!", len(tokens)-len(sendErrors), len(tokens)),
+			"errors":  sendErrors,
+		})
+	})
 
 	mux.ServeHTTP(w, r)
 }

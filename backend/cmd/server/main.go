@@ -36,19 +36,29 @@ type ServiceAccount struct {
 }
 
 func getAccessToken() (string, error) {
-	saPath := os.Getenv("FIREBASE_SERVICE_ACCOUNT_JSON")
-	if saPath == "" {
-		saPath = "firebase-service-account.json"
-	}
-
-	data, err := ioutil.ReadFile(saPath)
-	if err != nil {
-		return "", fmt.Errorf("không thể đọc file service account %s: %v", saPath, err)
-	}
-
 	var sa ServiceAccount
-	if err := json.Unmarshal(data, &sa); err != nil {
-		return "", fmt.Errorf("lỗi unmarshal service account: %v", err)
+	
+	// Thử đọc trực tiếp nội dung JSON từ biến môi trường
+	saJSON := os.Getenv("FIREBASE_SERVICE_ACCOUNT_JSON")
+	if saJSON != "" {
+		if err := json.Unmarshal([]byte(saJSON), &sa); err != nil {
+			return "", fmt.Errorf("lỗi unmarshal service account từ biến môi trường: %v", err)
+		}
+	} else {
+		// Fallback đọc file cục bộ (local dev)
+		saPath := os.Getenv("FIREBASE_SERVICE_ACCOUNT_JSON_PATH")
+		if saPath == "" {
+			saPath = "firebase-service-account.json"
+		}
+
+		data, err := ioutil.ReadFile(saPath)
+		if err != nil {
+			return "", fmt.Errorf("không thể đọc file service account %s: %v", saPath, err)
+		}
+
+		if err := json.Unmarshal(data, &sa); err != nil {
+			return "", fmt.Errorf("lỗi unmarshal service account từ file: %v", err)
+		}
 	}
 
 	// Parse private key
