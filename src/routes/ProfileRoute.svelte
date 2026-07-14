@@ -55,7 +55,8 @@
         body: JSON.stringify({
           fcmTokens: tokens,
           title: "📣 Thông báo thử nghiệm!",
-          body: "Hệ thống thông báo đẩy Boardgame Luna đang hoạt động bình thường trên thiết bị di động của bạn!"
+          body: "Hệ thống thông báo đẩy Boardgame Luna đang hoạt động bình thường trên thiết bị di động của bạn!",
+          clickAction: "/?route=profile"
         })
       });
       

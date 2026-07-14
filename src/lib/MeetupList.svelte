@@ -79,7 +79,8 @@
         sendPushNotificationProxy(
           meetup.hostFcmToken,
           "🎯 Yêu cầu tham gia kèo mới!",
-          `${playerName} muốn xin vào kèo "${meetup.title}" chơi game ${meetup.game} của bạn.`
+          `${playerName} muốn xin vào kèo "${meetup.title}" chơi game ${meetup.game} của bạn.`,
+          `/?route=manage&meetupId=${meetup.id}`
         );
       }
     } catch (err) {
@@ -101,7 +102,8 @@
         sendPushNotificationProxy(
           meetup.hostFcmToken,
           "✕ Yêu cầu tham gia đã bị hủy",
-          `${playerName} đã hủy yêu cầu tham gia kèo "${meetup.title}" của bạn.`
+          `${playerName} đã hủy yêu cầu tham gia kèo "${meetup.title}" của bạn.`,
+          `/?route=manage&meetupId=${meetup.id}`
         );
       }
     } catch (err) {

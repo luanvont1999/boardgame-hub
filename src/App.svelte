@@ -242,9 +242,55 @@
     }
   });
 
+  function handleDeepLink(urlStr: string) {
+    try {
+      const url = new URL(urlStr, window.location.origin);
+      const routeParam = url.searchParams.get('route');
+      if (routeParam === 'manage') {
+        const meetupId = url.searchParams.get('meetupId');
+        if (meetupId && allMeetups.length > 0) {
+          const matchedMeetup = allMeetups.find(m => m.id === meetupId);
+          if (matchedMeetup) {
+            navigate({ name: 'manage', params: { meetup: matchedMeetup } });
+          }
+        }
+      } else if (routeParam === 'profile') {
+        navigateToTab('profile');
+      }
+    } catch (e) {
+      console.error("Lỗi parse deep link:", e);
+    }
+  }
+
+  $effect(() => {
+    if (allMeetups.length > 0) {
+      const params = new URLSearchParams(window.location.search);
+      const routeParam = params.get('route');
+      if (routeParam === 'manage') {
+        const meetupId = params.get('meetupId');
+        const matchedMeetup = allMeetups.find(m => m.id === meetupId);
+        if (matchedMeetup) {
+          window.history.replaceState({}, document.title, window.location.pathname);
+          navigate({ name: 'manage', params: { meetup: matchedMeetup } });
+        }
+      } else if (routeParam === 'profile') {
+        window.history.replaceState({}, document.title, window.location.pathname);
+        navigateToTab('profile');
+      }
+    }
+  });
+
   onMount(() => {
     checkBackendHealth();
     listenToMeetupsRealtime();
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', (event) => {
+        if (event.data && event.data.type === 'NAVIGATE_ROUTE') {
+          handleDeepLink(event.data.url);
+        }
+      });
+    }
 
     const unsubAuth = onAuthStateChanged(auth, (user) => {
       currentUser = user;

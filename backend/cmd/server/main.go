@@ -104,7 +104,7 @@ func getAccessToken() (string, error) {
 	return result.AccessToken, nil
 }
 
-func sendFCMNotification(token, title, body string) error {
+func sendFCMNotification(token, title, body, clickAction string) error {
 	accessToken, err := getAccessToken()
 	if err != nil {
 		return fmt.Errorf("lỗi lấy access token: %v", err)
@@ -120,6 +120,9 @@ func sendFCMNotification(token, title, body string) error {
 				"title": title,
 				"body":  body,
 			},
+			"data": map[string]string{
+				"clickAction": clickAction,
+			},
 			"webpush": map[string]interface{}{
 				"headers": map[string]string{
 					"Urgency": "high",
@@ -129,6 +132,9 @@ func sendFCMNotification(token, title, body string) error {
 					"body":  body,
 					"icon":  "/boardgame_pwa_icon_1784017090071.png",
 					"badge": "/boardgame_pwa_icon_1784017090071.png",
+				},
+				"fcm_options": map[string]string{
+					"link": clickAction,
 				},
 			},
 			"apns": map[string]interface{}{
@@ -330,10 +336,11 @@ func main() {
 		}
 
 		var req struct {
-			FCMToken  string   `json:"fcmToken"`
-			FCMTokens []string `json:"fcmTokens"`
-			Title     string   `json:"title"`
-			Body      string   `json:"body"`
+			FCMToken    string   `json:"fcmToken"`
+			FCMTokens   []string `json:"fcmTokens"`
+			Title       string   `json:"title"`
+			Body        string   `json:"body"`
+			ClickAction string   `json:"clickAction"`
 		}
 
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -346,6 +353,11 @@ func main() {
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Missing required fields (title, body)"})
 			return
+		}
+
+		// Fallback clickAction mặc định nếu rỗng
+		if req.ClickAction == "" {
+			req.ClickAction = "/"
 		}
 
 		// Thu thập tất cả các token cần gửi
@@ -372,7 +384,7 @@ func main() {
 				tokenHint = tokenHint[:15] + "..."
 			}
 			log.Printf("[FCM] Đang gửi tới token: %s...", tokenHint)
-			err := sendFCMNotification(token, req.Title, req.Body)
+			err := sendFCMNotification(token, req.Title, req.Body, req.ClickAction)
 			if err != nil {
 				log.Printf("[FCM ERROR] Gửi push thất bại tới token %s: %v", tokenHint, err)
 				sendErrors = append(sendErrors, fmt.Sprintf("%s: %v", tokenHint, err))

@@ -33,3 +33,38 @@ messaging.onBackgroundMessage((payload) => {
     self.registration.showNotification(notificationTitle, notificationOptions);
   }
 });
+
+// Xử lý sự kiện click vào thông báo đẩy để chuyển hướng
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+
+  // Trích xuất link điều hướng từ data payload
+  let clickAction = '/';
+  if (event.notification.data) {
+    clickAction = event.notification.data.clickAction || clickAction;
+    if (!event.notification.data.clickAction && event.notification.data.FCM_MSG) {
+      const fcmMsg = event.notification.data.FCM_MSG;
+      if (fcmMsg.notification && fcmMsg.notification.click_action) {
+        clickAction = fcmMsg.notification.click_action;
+      }
+    }
+  }
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+      // Nếu có tab app đang mở, focus vào tab đó và gửi tin nhắn điều hướng route
+      for (let i = 0; i < windowClients.length; i++) {
+        const client = windowClients[i];
+        if ('focus' in client) {
+          client.focus();
+          client.postMessage({ type: 'NAVIGATE_ROUTE', url: clickAction });
+          return;
+        }
+      }
+      // Nếu chưa có tab nào mở, mở tab mới với đường dẫn clickAction
+      if (clients.openWindow) {
+        return clients.openWindow(clickAction);
+      }
+    })
+  );
+});

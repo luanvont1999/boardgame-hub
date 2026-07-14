@@ -60,7 +60,7 @@ export async function initNotifications(userId: string, onForegroundNotification
 /**
  * Gửi thông báo đẩy bằng cách gọi API Proxy của Backend Go.
  */
-export async function sendPushNotificationProxy(fcmToken: string, title: string, body: string) {
+export async function sendPushNotificationProxy(fcmToken: string, title: string, body: string, clickAction?: string) {
   if (!fcmToken) return;
 
   const API_BASE = import.meta.env.VITE_API_URL || '';
@@ -70,7 +70,7 @@ export async function sendPushNotificationProxy(fcmToken: string, title: string,
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ fcmToken, title, body })
+      body: JSON.stringify({ fcmToken, title, body, clickAction })
     });
     const data = await res.json();
     if (data.success) {
@@ -86,7 +86,7 @@ export async function sendPushNotificationProxy(fcmToken: string, title: string,
 /**
  * Gửi thông báo broadcast tới tất cả các thiết bị đã đăng ký.
  */
-export async function broadcastPushNotifications(title: string, body: string): Promise<{ success: boolean; message: string; errors?: string[] }> {
+export async function broadcastPushNotifications(title: string, body: string, clickAction?: string): Promise<{ success: boolean; message: string; errors?: string[] }> {
   try {
     const querySnapshot = await getDocs(collection(db, 'users'));
     const tokens: string[] = [];
@@ -108,7 +108,7 @@ export async function broadcastPushNotifications(title: string, body: string): P
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ fcmTokens: tokens, title, body })
+      body: JSON.stringify({ fcmTokens: tokens, title, body, clickAction })
     });
     
     const data = await res.json();
