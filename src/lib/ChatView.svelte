@@ -12,6 +12,14 @@
   import { onAuthStateChanged, type User } from 'firebase/auth';
   import { db, auth } from './firebase';
 
+  import { 
+    isApprovedMember, 
+    requestToJoin, 
+    cancelJoinRequest, 
+    subscribeToMeetupRequests,
+    type MeetupRequest
+  } from './meetupService';
+
   interface Meetup {
     id: string;
     title: string;
@@ -20,6 +28,7 @@
     hostName?: string;
     host_uid?: string;
     hostUid?: string;
+    approvedUids?: string[];
     color?: string;
   }
 
@@ -39,12 +48,23 @@
   let { meetup, onBack }: Props = $props();
 
   let messages = $state<ChatMessage[]>([]);
+  let requests = $state<MeetupRequest[]>([]);
   let newMessageText = $state<string>('');
   let isSending = $state<boolean>(false);
+  let isRequesting = $state<boolean>(false);
   let currentUser = $state<User | null>(auth.currentUser);
   let messagesContainer = $state<HTMLElement | null>(null);
   let unsubscribeStore: Unsubscribe | null = null;
   let unsubscribeAuth: Unsubscribe | null = null;
+  let unsubscribeReqs: Unsubscribe | null = null;
+
+  let hasChatAccess = $derived(isApprovedMember(meetup, currentUser?.uid));
+  
+  let myRequest = $derived.by(() => {
+    if (!currentUser || !requests.length) return null;
+    return requests.find(r => r.uid === currentUser?.uid) || null;
+  });
+
 
   onMount(() => {
     unsubscribeAuth = onAuthStateChanged(auth, (user) => {
@@ -112,6 +132,30 @@
     }
   }
 
+  async function handleSendJoinRequest() {
+    if (!meetup?.id || !currentUser || isRequesting) return;
+    isRequesting = true;
+    try {
+      await requestToJoin(meetup.id, currentUser);
+    } catch (err) {
+      console.error('Request join failed:', err);
+    } finally {
+      isRequesting = false;
+    }
+  }
+
+  async function handleCancelRequest() {
+    if (!meetup?.id || !currentUser || isRequesting) return;
+    isRequesting = true;
+    try {
+      await cancelJoinRequest(meetup.id, currentUser.uid);
+    } catch (err) {
+      console.error('Cancel request failed:', err);
+    } finally {
+      isRequesting = false;
+    }
+  }
+
   function formatMessageTime(timestamp: any): string {
     if (!timestamp) return 'Vừa xong';
     try {
@@ -128,6 +172,54 @@
     <div class="cartoon-card no-chat-card">
       <h3>Chưa chọn kèo chơi nào! 😢</h3>
       <button class="btn btn-primary" onclick={onBack}>Quay lại danh sách kèo</button>
+    </div>
+  {:else if !hasChatAccess}
+    <!-- Top Fullscreen Header -->
+    <div class="chat-top-nav cartoon-card">
+      <button type="button" class="btn btn-secondary back-btn" onclick={onBack}>
+        ← Quay lại
+      </button>
+
+      <div class="chat-nav-details">
+        <div class="chat-title-row">
+          <h2 class="chat-meetup-title">{meetup.title}</h2>
+          <span class="game-badge">🎲 {meetup.game}</span>
+        </div>
+        <span class="host-info">
+          👑 Host: <strong>{meetup.host_name || meetup.hostName || 'Ẩn danh'}</strong>
+        </span>
+      </div>
+    </div>
+
+    <!-- Access Denied Private Lock Screen -->
+    <div class="cartoon-card access-denied-card">
+      <span class="lock-big-icon">🔒</span>
+      <h3>Phòng Chat Riêng Tư</h3>
+      <p>Chỉ những người chơi đã được Host phê duyệt vào kèo mới có quyền xem và nhắn tin trong phòng chat này.</p>
+
+      <div class="access-action-box">
+        {#if !currentUser}
+          <p class="prompt-text">💡 Hãy đăng nhập ở tab <strong>Hồ sơ</strong> để gửi yêu cầu tham gia kèo.</p>
+          <button class="btn btn-primary" onclick={onBack}>Quay lại danh sách kèo</button>
+        {:else if myRequest?.status === 'pending'}
+          <div class="pending-status-pill">
+            ⏳ Yêu cầu của bạn đang chờ Host xét duyệt...
+          </div>
+          <div class="action-btn-group">
+            <button class="btn btn-secondary" onclick={handleCancelRequest} disabled={isRequesting}>
+              {isRequesting ? '...' : 'Hủy yêu cầu ✖'}
+            </button>
+            <button class="btn btn-primary" onclick={onBack}>Quay lại danh sách</button>
+          </div>
+        {:else}
+          <div class="action-btn-group">
+            <button class="btn btn-success" onclick={handleSendJoinRequest} disabled={isRequesting}>
+              {isRequesting ? 'Đang gửi...' : 'Gửi yêu cầu tham gia kèo 🤝'}
+            </button>
+            <button class="btn btn-primary" onclick={onBack}>Quay lại danh sách</button>
+          </div>
+        {/if}
+      </div>
     </div>
   {:else}
     <!-- Top Fullscreen Header -->
@@ -148,6 +240,7 @@
     </div>
 
     <!-- Messages Container Area -->
+
     <div class="chat-feed-area cartoon-card" bind:this={messagesContainer}>
       {#if messages.length === 0}
         <div class="chat-empty-state">
@@ -228,6 +321,67 @@
     padding: 40px;
     background-color: #fff;
   }
+
+  .access-denied-card {
+    margin: auto;
+    text-align: center;
+    padding: 40px 24px;
+    background-color: #fffefb;
+    max-width: 480px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .lock-big-icon {
+    font-size: 3.5rem;
+    display: block;
+  }
+
+  .access-denied-card h3 {
+    font-size: 1.5rem;
+    margin: 0;
+  }
+
+  .access-denied-card p {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    line-height: 1.5;
+    margin: 0;
+  }
+
+  .access-action-box {
+    margin-top: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+  }
+
+  .action-btn-group {
+    display: flex;
+    gap: 12px;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .action-btn-group .btn {
+    flex: 1;
+  }
+
+  .pending-status-pill {
+    padding: 10px 16px;
+    background-color: var(--pastel-yellow);
+    border: var(--border-width) solid var(--color-border);
+    border-radius: var(--radius-md);
+    font-weight: 800;
+    font-size: 0.9rem;
+    box-shadow: 3px 3px 0 var(--color-border);
+  }
+
 
   .no-chat-card h3 {
     margin-bottom: 16px;
