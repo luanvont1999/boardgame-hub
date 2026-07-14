@@ -60,6 +60,13 @@
   let isChecking = $state<boolean>(false);
   const API_BASE = import.meta.env.VITE_API_URL || "";
 
+  // PWA Install state
+  let deferredPrompt = $state<any>(null);
+  let showInstallBanner = $state(true);
+  let showIOSInstallInstructions = $state(false);
+  let isIOS = $state(false);
+  let isStandalone = $state(false);
+
   // ── Derived State ─────────────────────────────────────────────────────────
   let route = $derived(currentRoute());
   let childRoute = $derived(isChildRoute());
@@ -284,6 +291,20 @@
     checkBackendHealth();
     listenToMeetupsRealtime();
 
+    // Check PWA & iOS environment
+    isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+    isStandalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone;
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+    });
+
+    window.addEventListener('appinstalled', () => {
+      deferredPrompt = null;
+      addToast("🎉 Cài đặt ứng dụng thành công!", "success");
+    });
+
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.addEventListener('message', (event) => {
         if (event.data && event.data.type === 'NAVIGATE_ROUTE') {
@@ -334,6 +355,26 @@
   ) {
     selectedCity = city;
     selectedDistance = distance;
+  }
+
+  // ── PWA Install Trigger ──────────────────────────────────────────────────
+  async function triggerPWAInstall() {
+    if (isIOS && !isStandalone) {
+      showIOSInstallInstructions = true;
+      return;
+    }
+    
+    if (!deferredPrompt) {
+      addToast("Trình duyệt không hỗ trợ cài đặt tự động hoặc ứng dụng đã được tải về. Vui lòng thêm thủ công từ menu trình duyệt!", "info");
+      return;
+    }
+
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    console.log(`Lựa chọn cài đặt PWA: ${outcome}`);
+    if (outcome === 'accepted') {
+      deferredPrompt = null;
+    }
   }
 </script>
 
@@ -394,7 +435,12 @@
       </li>
     </ul>
 
-    <div class="desktop-nav-btn">
+    <div class="desktop-nav-btn" style="display: flex; gap: 10px;">
+      {#if deferredPrompt || (isIOS && !isStandalone)}
+        <button class="btn btn-primary" style="background-color: var(--pastel-yellow, #ffe869) !important; color: #1e1e24 !important;" onclick={triggerPWAInstall}>
+          Tải App 📲
+        </button>
+      {/if}
       <button class="btn btn-primary" onclick={() => navigateToTab("profile")}
         >Tài khoản</button
       >
@@ -403,6 +449,24 @@
 </header>
 
 <!-- ── Main Content ──────────────────────────────────────────────────────── -->
+{#if (deferredPrompt || (isIOS && !isStandalone)) && showInstallBanner}
+  <div class="container" style="margin-top: 15px; margin-bottom: -10px;">
+    <div class="cartoon-card install-banner">
+      <div class="install-banner-content">
+        <span class="install-banner-icon">📲</span>
+        <div class="install-banner-text">
+          <strong>Cài đặt Boardgame Luna!</strong>
+          <span>Tải app về màn hình chính để nhận thông báo đẩy nhanh hơn.</span>
+        </div>
+      </div>
+      <div class="install-banner-actions">
+        <button class="btn btn-success install-banner-btn" onclick={triggerPWAInstall}>Cài đặt</button>
+        <button class="btn btn-secondary install-banner-close" onclick={() => showInstallBanner = false}>Lúc khác</button>
+      </div>
+    </div>
+  </div>
+{/if}
+
 <main class="container">
   {#if route.name === "find"}
     <FindRoute
@@ -621,4 +685,105 @@
       right: 24px;
     }
   }
+
+  /* PWA Install Banner & Modal Styles */
+  .install-banner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: var(--pastel-blue, #a4f0fd);
+    padding: 12px 20px;
+    border-radius: 12px;
+    border: 3px solid #1e1e24;
+    box-shadow: 4px 4px 0px #1e1e24;
+    gap: 15px;
+    flex-wrap: wrap;
+  }
+  .install-banner-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .install-banner-icon {
+    font-size: 2rem;
+  }
+  .install-banner-text {
+    text-align: left;
+  }
+  .install-banner-text strong {
+    font-size: 1rem;
+    color: #1e1e24;
+    display: block;
+    margin-bottom: 2px;
+  }
+  .install-banner-text span {
+    font-size: 0.8rem;
+    color: #1e1e24;
+  }
+  .install-banner-actions {
+    display: flex;
+    gap: 10px;
+  }
+  .install-banner-btn {
+    padding: 6px 14px !important;
+    font-size: 0.85rem !important;
+  }
+  .install-banner-close {
+    padding: 6px 14px !important;
+    font-size: 0.85rem !important;
+    background-color: white !important;
+  }
+  .ios-modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(30, 30, 36, 0.6);
+    z-index: 100000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .ios-instructions-modal {
+    background-color: #fffdfb;
+    max-width: 360px;
+    width: 100%;
+    padding: 24px;
+    border-radius: 12px;
+    border: 3px solid #1e1e24;
+    box-shadow: 6px 6px 0px #1e1e24;
+  }
+  @media (max-width: 768px) {
+    .install-banner {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 12px;
+    }
+    .install-banner-actions {
+      justify-content: flex-end;
+    }
+  }
 </style>
+
+<!-- iOS Install Modal -->
+{#if showIOSInstallInstructions}
+  <div class="ios-modal-backdrop">
+    <div class="cartoon-card ios-instructions-modal">
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #1e1e24; padding-bottom: 12px; margin-bottom: 15px;">
+        <h3 style="margin: 0; font-size: 1.2rem; font-weight: 800; color: #1e1e24;">Cài đặt trên iPhone/iPad 📲</h3>
+        <button style="background: none; border: none; font-size: 1.5rem; font-weight: 800; cursor: pointer; color: #1e1e24;" onclick={() => showIOSInstallInstructions = false}>✕</button>
+      </div>
+      <p style="font-size: 0.95rem; line-height: 1.5; color: #1e1e24; margin-bottom: 15px; text-align: left;">
+        Trình duyệt Safari trên iOS không hỗ trợ tự động cài đặt. Hãy làm theo 3 bước đơn giản:
+      </p>
+      <ol style="font-size: 0.9rem; line-height: 1.6; color: #1e1e24; padding-left: 20px; margin-bottom: 20px; text-align: left;">
+        <li style="margin-bottom: 8px;">Nhấn vào biểu tượng <strong>Chia sẻ (Share)</strong> <span style="font-size: 1.1rem; vertical-align: middle;">📤</span> trên Safari.</li>
+        <li style="margin-bottom: 8px;">Cuộn xuống và chọn <strong>Thêm vào MH chính (Add to Home Screen)</strong> <span style="font-size: 1.1rem; vertical-align: middle;">➕</span>.</li>
+        <li>Bấm <strong>Thêm (Add)</strong> ở góc trên bên phải để hoàn tất!</li>
+      </ol>
+      <button class="btn btn-primary" style="width: 100%; padding: 10px;" onclick={() => showIOSInstallInstructions = false}>Đã hiểu 👍</button>
+    </div>
+  </div>
+{/if}
