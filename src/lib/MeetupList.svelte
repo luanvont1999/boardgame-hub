@@ -10,6 +10,7 @@
     kickOrLeaveMember,
   } from "./meetupService";
   import { navigate } from "./router.svelte";
+  import { sendPushNotificationProxy } from "./notificationService";
 
   interface Meetup {
     id: string;
@@ -27,6 +28,8 @@
     playersNeeded?: number;
     time: string;
     color: string;
+    hostFcmToken?: string;
+    pendingUids?: string[];
   }
 
   // Props — no more callback props for chat/manage/map
@@ -69,6 +72,16 @@
     isActionProcessing = true;
     try {
       await requestToJoin(meetup.id, currentUser);
+      
+      // Gửi thông báo đẩy tới Host thiết bị di động
+      if (meetup.hostFcmToken) {
+        const playerName = currentUser.displayName || currentUser.email || 'Thành viên mới';
+        sendPushNotificationProxy(
+          meetup.hostFcmToken,
+          "🎯 Yêu cầu tham gia kèo mới!",
+          `${playerName} muốn xin vào kèo "${meetup.title}" chơi game ${meetup.game} của bạn.`
+        );
+      }
     } catch (err) {
       console.error("Request join error:", err);
     } finally {
@@ -81,6 +94,16 @@
     isActionProcessing = true;
     try {
       await cancelJoinRequest(meetup.id, currentUser.uid);
+
+      // Gửi thông báo đẩy tới Host thông báo đã hủy
+      if (meetup.hostFcmToken) {
+        const playerName = currentUser.displayName || currentUser.email || 'Thành viên';
+        sendPushNotificationProxy(
+          meetup.hostFcmToken,
+          "✕ Yêu cầu tham gia đã bị hủy",
+          `${playerName} đã hủy yêu cầu tham gia kèo "${meetup.title}" của bạn.`
+        );
+      }
     } catch (err) {
       console.error("Cancel request error:", err);
     } finally {

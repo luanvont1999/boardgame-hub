@@ -9,6 +9,7 @@
     isChildRoute,
     type RouteParams,
   } from "./lib/router.svelte";
+  import { initNotifications } from "./lib/notificationService";
 
   // Route components
   import FindRoute from "./routes/FindRoute.svelte";
@@ -247,6 +248,13 @@
 
     const unsubAuth = onAuthStateChanged(auth, (user) => {
       currentUser = user;
+      if (user) {
+        initNotifications(user.uid, (payload) => {
+          const title = payload.notification?.title || "Thông báo mới";
+          const body = payload.notification?.body || "";
+          addToast(`🔔 ${title}: ${body}`, "info");
+        });
+      }
     });
 
     if (navigator.geolocation) {
