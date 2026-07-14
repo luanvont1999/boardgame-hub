@@ -1,7 +1,9 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { onAuthStateChanged, type User, getIdToken } from 'firebase/auth';
-  import { auth } from './firebase';
+  import { onAuthStateChanged, type User } from 'firebase/auth';
+  import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+  import { auth, db } from './firebase';
+
 
   // Svelte 5 props with bindable selectedLat, selectedLng, addressText and proximity current GPS
   interface Props {
@@ -198,46 +200,41 @@
     isSubmitting = true;
 
     try {
-      const token = await getIdToken(user, true);
+      const colors = ["#bca0f5", "#ffa4b2", "#ffe869", "#ffb875", "#9ee3b2", "#a4f0fd"];
+      const color = colors[Math.floor(Math.random() * colors.length)];
+      const hostName = user.displayName || user.email || 'Ẩn danh';
 
-      const apiBase = import.meta.env.VITE_API_URL || '';
-      const res = await fetch(`${apiBase}/api/meetups/create`, {
-
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          title,
-          game,
-          lat,
-          lng,
-          time
-        })
+      // Save meetup directly to Firebase Cloud Firestore
+      await addDoc(collection(db, 'meetups'), {
+        title,
+        game,
+        hostName,
+        hostUid: user.uid,
+        lat,
+        lng,
+        playersCount: 1,
+        playersNeeded: 4,
+        time,
+        color,
+        createdAt: serverTimestamp()
       });
 
-      if (res.ok) {
-        successMessage = 'Tạo kèo mới thành công! Quân meeple của bạn đã được ghim lên bản đồ.';
-        
-        // Reset form fields
-        title = '';
-        game = '';
-        time = '';
-        addressText = '';
-        lat = null;
-        lng = null;
-        selectedLat = null;
-        selectedLng = null;
+      successMessage = 'Tạo kèo mới thành công! Quân meeple của bạn đã được ghim lên bản đồ.';
+      
+      // Reset form fields
+      title = '';
+      game = '';
+      time = '';
+      addressText = '';
+      lat = null;
+      lng = null;
+      selectedLat = null;
+      selectedLng = null;
 
-        onCreateSuccess();
-      } else {
-        const errData = await res.json();
-        errorMessage = errData.details || errData.error || 'Tạo kèo thất bại!';
-      }
+      onCreateSuccess();
     } catch (err: any) {
-      console.error(err);
-      errorMessage = 'Lỗi kết nối đến Backend: ' + err.message;
+      console.error('[Firestore] Create meetup failed:', err);
+      errorMessage = 'Lỗi tạo kèo trên Firestore: ' + (err.message || 'Lỗi kết nối');
     } finally {
       isSubmitting = false;
     }
