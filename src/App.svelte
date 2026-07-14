@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { onMount, tick } from 'svelte';
-  import Auth from './lib/Auth.svelte';
-  import Map from './lib/Map.svelte';
-  import CreateMeetupForm from './lib/CreateMeetupForm.svelte';
-  import MeetupList from './lib/MeetupList.svelte';
+  import { onMount, tick } from "svelte";
+  import Auth from "./lib/Auth.svelte";
+  import Map from "./lib/Map.svelte";
+  import CreateMeetupForm from "./lib/CreateMeetupForm.svelte";
+  import MeetupList from "./lib/MeetupList.svelte";
 
   // Master meetups data state
   let allMeetups = $state<any[]>([]);
@@ -12,63 +12,85 @@
   let mapComponent = $state<any>(null);
   let clickedLat = $state<number | null>(null);
   let clickedLng = $state<number | null>(null);
-  let selectedAddressText = $state<string>('');
+  let selectedAddressText = $state<string>("");
 
   // Temporary states for transactional Modal location selection
   let tempLat = $state<number | null>(null);
   let tempLng = $state<number | null>(null);
-  let tempAddressText = $state<string>('');
+  let tempAddressText = $state<string>("");
   let isResolvingAddress = $state<boolean>(false);
 
   // Shared Filter and Geolocation states
-  let selectedCity = $state<'all' | 'HCM' | 'HN'>('all');
-  let selectedDistance = $state<'all' | '5' | '10'>('all');
+  let selectedCity = $state<"all" | "HCM" | "HN">("all");
+  let selectedDistance = $state<"all" | "5" | "10">("all");
   let userLat = $state<number | null>(null);
   let userLng = $state<number | null>(null);
   let isTrackingGPS = $state<boolean>(false);
   let gpsError = $state<boolean>(false);
 
   // Active navigation tab
-  let activeTab = $state<'find' | 'create' | 'profile'>('find');
-  
+  let activeTab = $state<"find" | "create" | "profile">("find");
+
   // Smart location selection mode
   let isSelectingLocation = $state<boolean>(false);
-  
+
   // Modal visibility state
   let isMapModalOpen = $state<boolean>(false);
 
   // General API Health state
-  let apiStatus: 'online' | 'offline' | 'connecting' = $state('connecting');
-  let apiMessage: string = $state('Đang ping server Go...');
+  let apiStatus: "online" | "offline" | "connecting" = $state("connecting");
+  let apiMessage: string = $state("Đang ping server Go...");
   let apiCode: number | null = $state(null);
   let isChecking: boolean = $state(false);
 
   // Distance helper (Haversine)
-  function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  function calculateDistance(
+    lat1: number,
+    lon1: number,
+    lat2: number,
+    lon2: number,
+  ): number {
     const R = 6371; // km
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = 
-      Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-      Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLon = ((lon2 - lon1) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
   }
 
-  function getMeetupCity(meetup: any): 'HCM' | 'HN' {
-    const distToHCM = calculateDistance(meetup.lat, meetup.lng, 10.7769, 106.7009);
-    const distToHN = calculateDistance(meetup.lat, meetup.lng, 21.0285, 105.8542);
-    return distToHN < distToHCM ? 'HN' : 'HCM';
+  function getMeetupCity(meetup: any): "HCM" | "HN" {
+    const distToHCM = calculateDistance(
+      meetup.lat,
+      meetup.lng,
+      10.7769,
+      106.7009,
+    );
+    const distToHN = calculateDistance(
+      meetup.lat,
+      meetup.lng,
+      21.0285,
+      105.8542,
+    );
+    return distToHN < distToHCM ? "HN" : "HCM";
   }
 
   // Svelte 5 reactive computed derived state
   let filteredMeetups = $derived.by(() => {
-    return allMeetups.filter(meetup => {
+    return allMeetups.filter((meetup) => {
       const city = getMeetupCity(meetup);
-      if (selectedCity !== 'all' && city !== selectedCity) return false;
-      if (selectedDistance !== 'all' && userLat !== null && userLng !== null) {
-        const dist = calculateDistance(userLat, userLng, meetup.lat, meetup.lng);
+      if (selectedCity !== "all" && city !== selectedCity) return false;
+      if (selectedDistance !== "all" && userLat !== null && userLng !== null) {
+        const dist = calculateDistance(
+          userLat,
+          userLng,
+          meetup.lat,
+          meetup.lng,
+        );
         const limit = parseFloat(selectedDistance);
         if (dist > limit) return false;
       }
@@ -78,25 +100,25 @@
 
   async function checkBackendHealth() {
     isChecking = true;
-    apiStatus = 'connecting';
-    apiMessage = 'Đang ping server...';
+    apiStatus = "connecting";
+    apiMessage = "Đang ping server...";
     apiCode = null;
 
     try {
-      const res = await fetch('http://localhost:8080/api/health');
+      const res = await fetch("http://localhost:8080/api/health");
       if (res.ok) {
         const data = await res.json();
-        apiStatus = 'online';
-        apiMessage = data.message || 'API hoạt động tốt!';
+        apiStatus = "online";
+        apiMessage = data.message || "API hoạt động tốt!";
         apiCode = res.status;
       } else {
-        apiStatus = 'offline';
+        apiStatus = "offline";
         apiMessage = `Lỗi server: Code ${res.status}`;
         apiCode = res.status;
       }
     } catch (err: any) {
-      apiStatus = 'offline';
-      apiMessage = 'Mất kết nối API';
+      apiStatus = "offline";
+      apiMessage = "Mất kết nối API";
       apiCode = null;
     } finally {
       isChecking = false;
@@ -105,7 +127,7 @@
 
   async function fetchAllMeetups() {
     try {
-      const res = await fetch('http://localhost:8080/api/meetups');
+      const res = await fetch("http://localhost:8080/api/meetups");
       if (res.ok) {
         allMeetups = await res.json();
       }
@@ -144,7 +166,7 @@
   function handleTempLocationSelect(lng: number, lat: number) {
     tempLat = lat;
     tempLng = lng;
-    
+
     if (isSelectingLocation) {
       reverseGeocodeTemp(lat, lng);
     }
@@ -153,10 +175,10 @@
   async function handleCreateSuccess() {
     clickedLat = null;
     clickedLng = null;
-    selectedAddressText = '';
+    selectedAddressText = "";
     isMapModalOpen = false;
     await fetchAllMeetups();
-    activeTab = 'find';
+    activeTab = "find";
   }
 
   function handleSelectMeetup(meetup: any) {
@@ -166,7 +188,7 @@
     clickedLng = meetup.lng;
     isSelectingLocation = false;
     isMapModalOpen = true;
-    
+
     // Wait for Svelte modal DOM mount, then trigger jump
     tick().then(() => {
       if (mapComponent) {
@@ -189,7 +211,7 @@
     } else {
       tempLat = null;
       tempLng = null;
-      tempAddressText = '';
+      tempAddressText = "";
     }
     isMapModalOpen = true;
   }
@@ -199,18 +221,18 @@
     isSelectingLocation = false;
     tempLat = null;
     tempLng = null;
-    tempAddressText = '';
+    tempAddressText = "";
   }
 
   function handleBackdropClick(e: MouseEvent) {
     const target = e.target as HTMLElement;
-    if (target.classList.contains('cartoon-modal-backdrop')) {
+    if (target.classList.contains("cartoon-modal-backdrop")) {
       closeMapModal();
     }
   }
 
   function handleBackdropKeyDown(e: KeyboardEvent) {
-    if (e.key === 'Escape' || e.key === 'Enter') {
+    if (e.key === "Escape" || e.key === "Enter") {
       closeMapModal();
     }
   }
@@ -240,7 +262,7 @@
           gpsError = true;
           isTrackingGPS = false;
         },
-        { enableHighAccuracy: true }
+        { enableHighAccuracy: true },
       );
     } else {
       gpsError = true;
@@ -252,37 +274,62 @@
 <header class="navbar">
   <div class="container navbar-container">
     <div class="logo">
-      <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" fill="currentColor"/>
-        <circle cx="8" cy="8" r="1.5" fill="#fff"/>
-        <circle cx="16" cy="16" r="1.5" fill="#fff"/>
-        <circle cx="16" cy="8" r="1.5" fill="#fff"/>
-        <circle cx="8" cy="16" r="1.5" fill="#fff"/>
-        <circle cx="12" cy="12" r="1.5" fill="#fff"/>
+      <svg
+        class="logo-icon"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <rect
+          x="3"
+          y="3"
+          width="18"
+          height="18"
+          rx="2"
+          ry="2"
+          fill="currentColor"
+        />
+        <circle cx="8" cy="8" r="1.5" fill="#fff" />
+        <circle cx="16" cy="16" r="1.5" fill="#fff" />
+        <circle cx="16" cy="8" r="1.5" fill="#fff" />
+        <circle cx="8" cy="16" r="1.5" fill="#fff" />
+        <circle cx="12" cy="12" r="1.5" fill="#fff" />
       </svg>
       <span>Boardgame Hub</span>
     </div>
-    
+
     <ul class="nav-links">
       <li>
-        <button class="nav-link {activeTab === 'find' ? 'active' : ''}" onclick={() => activeTab = 'find'}>
+        <button
+          class="nav-link {activeTab === 'find' ? 'active' : ''}"
+          onclick={() => (activeTab = "find")}
+        >
           Tìm kèo
         </button>
       </li>
       <li>
-        <button class="nav-link {activeTab === 'create' ? 'active' : ''}" onclick={() => activeTab = 'create'}>
+        <button
+          class="nav-link {activeTab === 'create' ? 'active' : ''}"
+          onclick={() => (activeTab = "create")}
+        >
           Lên kèo
         </button>
       </li>
       <li>
-        <button class="nav-link {activeTab === 'profile' ? 'active' : ''}" onclick={() => activeTab = 'profile'}>
+        <button
+          class="nav-link {activeTab === 'profile' ? 'active' : ''}"
+          onclick={() => (activeTab = "profile")}
+        >
           Hồ sơ
         </button>
       </li>
     </ul>
 
     <div class="desktop-nav-btn">
-      <button class="btn btn-primary" onclick={() => activeTab = 'profile'}>
+      <button class="btn btn-primary" onclick={() => (activeTab = "profile")}>
         Tài khoản
       </button>
     </div>
@@ -290,24 +337,41 @@
 </header>
 
 <main class="container" style="padding-top: 24px;">
-  
-  {#if activeTab === 'find'}
+  {#if activeTab === "find"}
     <!-- Tab Tìm Kèo -->
-    <section id="map-discovery" style="text-align: center; padding-bottom: 20px;">
-      
+    <section
+      id="map-discovery"
+      style="text-align: center; padding-bottom: 20px;"
+    >
       <!-- Premium Hero Header Card instead of static map -->
-      <div class="cartoon-card" style="background-color: var(--pastel-cyan); padding: 30px 20px; text-align: center; margin-bottom: 32px; position: relative;">
-        <span class="badge-tag" style="background-color: #fff; margin-bottom: 12px;">Bản Đồ Hội Nhóm 🗺️</span>
-        <h2 style="font-size: 1.8rem; margin-bottom: 8px;">Khám phá các nhóm chơi quanh bạn</h2>
-        <p style="font-weight: 600; color: var(--text-dark); max-width: 600px; margin: 0 auto 24px; line-height: 1.5; font-size: 0.95rem;">
-          Bạn muốn tìm các bàn chơi đang hoạt động trực quan địa lý? Hãy click mở bản đồ để quét các quân Meeple màu sắc!
+      <div
+        class="cartoon-card"
+        style="background-color: var(--pastel-cyan); padding: 30px 20px; text-align: center; margin-bottom: 32px; position: relative;"
+      >
+        <span
+          class="badge-tag"
+          style="background-color: #fff; margin-bottom: 12px;"
+          >Bản Đồ Hội Nhóm 🗺️</span
+        >
+        <h2 style="font-size: 1.8rem; margin-bottom: 8px;">
+          Khám phá các nhóm chơi quanh bạn
+        </h2>
+        <p
+          style="font-weight: 600; color: var(--text-dark); max-width: 600px; margin: 0 auto 24px; line-height: 1.5; font-size: 0.95rem;"
+        >
+          Bạn muốn tìm các bàn chơi đang hoạt động trực quan địa lý? Hãy click
+          mở bản đồ để quét các quân Meeple màu sắc!
         </p>
-        <button class="btn btn-primary" style="font-size: 1.1rem; padding: 12px 32px;" onclick={() => openMapModal(false)}>
+        <button
+          class="btn btn-primary"
+          style="font-size: 1.1rem; padding: 12px 32px;"
+          onclick={() => openMapModal(false)}
+        >
           🗺️ MỞ BẢN ĐỒ HỘI NHÓM
         </button>
       </div>
 
-      <MeetupList 
+      <MeetupList
         meetups={filteredMeetups}
         {userLat}
         {userLng}
@@ -318,7 +382,6 @@
         onSelectMeetup={handleSelectMeetup}
       />
     </section>
-
   {:else}
     <!-- Content header when in other tabs -->
     <section class="hero-section" style="padding: 24px 0 16px;">
@@ -326,22 +389,22 @@
     </section>
   {/if}
 
-  {#if activeTab === 'create'}
+  {#if activeTab === "create"}
     <!-- Tab Lên Kèo -->
     <section id="create-meetup-tab" style="padding-bottom: 40px;">
-      <CreateMeetupForm 
-        bind:selectedLat={clickedLat} 
-        bind:selectedLng={clickedLng} 
+      <CreateMeetupForm
+        bind:selectedLat={clickedLat}
+        bind:selectedLng={clickedLng}
         bind:addressText={selectedAddressText}
         {userLat}
         {userLng}
         onLocationInputClick={handleLocationInputClick}
-        onCreateSuccess={handleCreateSuccess} 
+        onCreateSuccess={handleCreateSuccess}
       />
     </section>
   {/if}
 
-  {#if activeTab === 'profile'}
+  {#if activeTab === "profile"}
     <!-- Tab Hồ Sơ -->
     <section id="profile-tab" style="padding-bottom: 40px;">
       <h2 class="section-title">Hồ Sơ Của Bạn</h2>
@@ -349,7 +412,11 @@
 
       <!-- Retro Console moved to debug tools section at bottom of profile -->
       <div style="margin-top: 40px;">
-        <h3 style="font-size: 1.1rem; color: var(--text-muted); font-weight: 700; margin-bottom: 12px;">CÔNG CỤ PHÁT TRIỂN (API STATUS)</h3>
+        <h3
+          style="font-size: 1.1rem; color: var(--text-muted); font-weight: 700; margin-bottom: 12px;"
+        >
+          CÔNG CỤ PHÁT TRIỂN (API STATUS)
+        </h3>
         <section class="retro-console" id="status" style="margin-top: 0;">
           <div class="console-screen">
             <div class="console-text-row">
@@ -362,11 +429,19 @@
             </div>
             <div class="console-text-row">
               <span class="console-label">STATUS CODE:</span>
-              <span class="console-val">{apiCode !== null ? apiCode : '---'}</span>
+              <span class="console-val"
+                >{apiCode !== null ? apiCode : "---"}</span
+              >
             </div>
             <div class="console-text-row">
               <span class="console-label">RESPONSE:</span>
-              <span class="console-val {apiStatus === 'online' ? 'online' : apiStatus === 'offline' ? 'offline' : 'connecting'}">
+              <span
+                class="console-val {apiStatus === 'online'
+                  ? 'online'
+                  : apiStatus === 'offline'
+                    ? 'offline'
+                    : 'connecting'}"
+              >
                 {apiMessage}
               </span>
             </div>
@@ -374,10 +449,10 @@
 
           <div class="console-controls">
             <div class="led-indicator">
-              {#if apiStatus === 'online'}
+              {#if apiStatus === "online"}
                 <span class="led-dot led-online"></span>
                 <span>ONLINE</span>
-              {:else if apiStatus === 'offline'}
+              {:else if apiStatus === "offline"}
                 <span class="led-dot led-offline"></span>
                 <span>OFFLINE</span>
               {:else}
@@ -387,8 +462,13 @@
             </div>
 
             <div class="console-buttons">
-              <button class="btn btn-success" style="padding: 8px 16px; font-size: 0.9rem;" onclick={checkBackendHealth} disabled={isChecking}>
-                {isChecking ? 'Pinging...' : 'PING API'}
+              <button
+                class="btn btn-success"
+                style="padding: 8px 16px; font-size: 0.9rem;"
+                onclick={checkBackendHealth}
+                disabled={isChecking}
+              >
+                {isChecking ? "Pinging..." : "PING API"}
               </button>
             </div>
           </div>
@@ -396,36 +476,61 @@
       </div>
     </section>
   {/if}
-
 </main>
-
-<footer class="footer">
-  <div class="container">
-    <p>🎲 Boardgame Hub — Thiết kế hoạt hình sáng & tối ưu di động</p>
-  </div>
-</footer>
 
 <!-- Mobile Bottom Navigation (Tab Bar) - Rebuilt to exactly 3 tabs -->
 <nav class="mobile-nav-bar">
-  <button class="mobile-nav-item {activeTab === 'create' ? 'active' : ''}" onclick={() => activeTab = 'create'}>
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M12 5v14M5 12h14" stroke-width="3"/>
+  <button
+    class="mobile-nav-item {activeTab === 'create' ? 'active' : ''}"
+    onclick={() => (activeTab = "create")}
+  >
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2.5"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    >
+      <path d="M12 5v14M5 12h14" stroke-width="3" />
     </svg>
     <span>Lên kèo</span>
   </button>
 
-  <button class="mobile-nav-item {activeTab === 'find' ? 'active' : ''}" onclick={() => activeTab = 'find'}>
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="12" cy="12" r="10"/>
-      <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>
+  <button
+    class="mobile-nav-item {activeTab === 'find' ? 'active' : ''}"
+    onclick={() => (activeTab = "find")}
+  >
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2.5"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    >
+      <circle cx="12" cy="12" r="10" />
+      <polygon
+        points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"
+      />
     </svg>
     <span>Tìm kèo</span>
   </button>
-  
-  <button class="mobile-nav-item {activeTab === 'profile' ? 'active' : ''}" onclick={() => activeTab = 'profile'}>
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-      <circle cx="12" cy="7" r="4"/>
+
+  <button
+    class="mobile-nav-item {activeTab === 'profile' ? 'active' : ''}"
+    onclick={() => (activeTab = "profile")}
+  >
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2.5"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    >
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+      <circle cx="12" cy="7" r="4" />
     </svg>
     <span>Hồ sơ</span>
   </button>
@@ -433,50 +538,67 @@
 
 <!-- Modal Map Backdrop Container -->
 {#if isMapModalOpen}
-  <div 
-    class="cartoon-modal-backdrop" 
-    onclick={handleBackdropClick} 
+  <div
+    class="cartoon-modal-backdrop"
+    onclick={handleBackdropClick}
     onkeydown={handleBackdropKeyDown}
     role="button"
     tabindex="0"
   >
     <div class="cartoon-card cartoon-modal-content">
       <div class="modal-header">
-        <h3>{isSelectingLocation ? '🎯 Chọn Vị Trí Lên Kèo' : '🗺️ Bản Đồ Hội Nhóm'}</h3>
+        <h3>
+          {isSelectingLocation
+            ? "🎯 Chọn Vị Trí Lên Kèo"
+            : "🗺️ Bản Đồ Hội Nhóm"}
+        </h3>
         <button class="btn btn-close-modal" onclick={closeMapModal}>✕</button>
       </div>
-      
+
       <div class="modal-body">
-        <Map 
-          bind:this={mapComponent} 
+        <Map
+          bind:this={mapComponent}
           meetups={filteredMeetups}
           selectedLat={tempLat}
           selectedLng={tempLng}
           {isSelectingLocation}
-          onLocationSelect={handleTempLocationSelect} 
+          onLocationSelect={handleTempLocationSelect}
         />
       </div>
-      
+
       <div class="modal-footer">
         {#if isSelectingLocation}
-          <span class="modal-footer-tip" style="flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 8px;">
+          <span
+            class="modal-footer-tip"
+            style="flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 8px;"
+          >
             {#if tempLat && tempLng}
-              📍 Địa chỉ: <strong>{isResolvingAddress ? 'Đang quét vị trí...' : tempAddressText}</strong>
+              📍 Địa chỉ: <strong
+                >{isResolvingAddress
+                  ? "Đang quét vị trí..."
+                  : tempAddressText}</strong
+              >
             {:else}
               👉 Click vào điểm bất kỳ trên bản đồ để chọn vị trí.
             {/if}
           </span>
-          <button 
+          <button
             type="button"
-            class="btn btn-primary btn-confirm-location" 
+            class="btn btn-primary btn-confirm-location"
             disabled={tempLat === null || isResolvingAddress}
             onclick={confirmLocationSelection}
           >
             Xác nhận vị trí 🎯
           </button>
         {:else}
-          <span class="modal-footer-tip">💡 Click quân cờ Meeple để xem chi tiết kèo.</span>
-          <button type="button" class="btn btn-secondary" onclick={closeMapModal}>Đóng bản đồ</button>
+          <span class="modal-footer-tip"
+            >💡 Click quân cờ Meeple để xem chi tiết kèo.</span
+          >
+          <button
+            type="button"
+            class="btn btn-secondary"
+            onclick={closeMapModal}>Đóng bản đồ</button
+          >
         {/if}
       </div>
     </div>
