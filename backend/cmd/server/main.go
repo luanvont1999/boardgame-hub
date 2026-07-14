@@ -130,8 +130,6 @@ func sendFCMNotification(token, title, body, clickAction string) error {
 				"notification": map[string]interface{}{
 					"title": title,
 					"body":  body,
-					"icon":  "/boardgame_pwa_icon_1784017090071.png",
-					"badge": "/boardgame_pwa_icon_1784017090071.png",
 				},
 				"fcm_options": map[string]string{
 					"link": clickAction,

@@ -13,6 +13,15 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
+// Ép Service Worker mới kích hoạt ngay lập tức khi phát hiện có thay đổi
+self.addEventListener('install', (event) => {
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(clients.claim());
+});
+
 // Lắng nghe thông báo khi ứng dụng chạy ngầm / đóng
 messaging.onBackgroundMessage((payload) => {
   console.log('[firebase-messaging-sw.js] Nhận thông báo ngầm:', payload);
