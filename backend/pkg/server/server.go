@@ -131,20 +131,14 @@ func sendFCMNotification(token, title, body, clickAction string) error {
 	payload := map[string]interface{}{
 		"message": map[string]interface{}{
 			"token": token,
-			"notification": map[string]string{
-				"title": title,
-				"body":  body,
-			},
 			"data": map[string]string{
+				"title":       title,
+				"body":        body,
 				"clickAction": clickAction,
 			},
 			"webpush": map[string]interface{}{
 				"headers": map[string]string{
 					"Urgency": "high",
-				},
-				"notification": map[string]interface{}{
-					"title": title,
-					"body":  body,
 				},
 				"fcm_options": map[string]string{
 					"link": clickAction,

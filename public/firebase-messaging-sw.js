@@ -1,17 +1,4 @@
 // public/firebase-messaging-sw.js
-importScripts('https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js');
-importScripts('https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js');
-
-firebase.initializeApp({
-  apiKey: "AIzaSyATafzB15sNKoZp1dZ5_e0enrwpQr99-Vc",
-  authDomain: "boardgame-hub-7f7a2.firebaseapp.com",
-  projectId: "boardgame-hub-7f7a2",
-  storageBucket: "boardgame-hub-7f7a2.firebasestorage.app",
-  messagingSenderId: "202469575377",
-  appId: "1:202469575377:web:82470f41441d81ebbc53f0"
-});
-
-const messaging = firebase.messaging();
 
 // Ép Service Worker mới kích hoạt ngay lập tức khi phát hiện có thay đổi
 self.addEventListener('install', (event) => {
@@ -22,24 +9,36 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(clients.claim());
 });
 
-// Lắng nghe thông báo khi ứng dụng chạy ngầm / đóng
-messaging.onBackgroundMessage((payload) => {
-  console.log('[firebase-messaging-sw.js] Nhận thông báo ngầm:', payload);
+// Lắng nghe sự kiện push thô của trình duyệt (Web Push API) để hiển thị thông báo dưới nền
+self.addEventListener('push', (event) => {
+  console.log('[Service Worker] Nhận sự kiện push thô:', event);
   
-  // Nếu payload có trường 'notification', Firebase SDK sẽ tự động hiển thị thông báo hệ thống
-  // dựa trên cấu hình gửi từ Server (chứa icon, badge, v.v.).
-  // Việc tự gọi showNotification một lần nữa ở đây sẽ gây xung đột và kích hoạt thông báo mặc định 
-  // "Trang web này được cập nhật trong trang nền" của trình duyệt để cảnh báo.
-  if (!payload.notification) {
-    const notificationTitle = payload.data?.title || 'Boardgame Luna 🎲';
+  if (!event.data) return;
+
+  try {
+    const payload = event.data.json();
+    console.log('[Service Worker] Payload JSON:', payload);
+
+    // FCM V1 gửi dữ liệu trong nhánh data của payload.
+    // Ưu tiên trích xuất từ payload.notification hoặc payload.data
+    const title = payload.notification?.title || payload.data?.title || 'Boardgame Luna 🎲';
+    const body = payload.notification?.body || payload.data?.body || 'Bạn có thông báo mới!';
+    const clickAction = payload.notification?.click_action || payload.data?.clickAction || '/';
+
     const notificationOptions = {
-      body: payload.data?.body || 'Bạn có thông báo mới!',
+      body: body,
       icon: '/boardgame_pwa_icon_1784017090071.png',
       badge: '/boardgame_pwa_icon_1784017090071.png',
-      data: payload.data || {}
+      data: {
+        clickAction: clickAction
+      }
     };
 
-    self.registration.showNotification(notificationTitle, notificationOptions);
+    event.waitUntil(
+      self.registration.showNotification(title, notificationOptions)
+    );
+  } catch (e) {
+    console.error('[Service Worker] Lỗi xử lý push payload:', e);
   }
 });
 
