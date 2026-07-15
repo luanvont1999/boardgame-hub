@@ -6,6 +6,7 @@
 export type RouteParams =
   | { name: 'find' }
   | { name: 'my-meetups' }
+  | { name: 'chats' }
   | { name: 'create' }
   | { name: 'profile' }
   | { name: 'filter' }
@@ -35,6 +36,9 @@ export function parseHash(hash: string): RouteParams {
   }
   if (cleanHash === '/my-meetups') {
     return { name: 'my-meetups' };
+  }
+  if (cleanHash === '/chats') {
+    return { name: 'chats' };
   }
   if (cleanHash === '/create') {
     return { name: 'create' };
@@ -79,6 +83,7 @@ export function parseHash(hash: string): RouteParams {
 export function buildHash(route: RouteParams): string {
   if (route.name === 'find') return '#/find';
   if (route.name === 'my-meetups') return '#/my-meetups';
+  if (route.name === 'chats') return '#/chats';
   if (route.name === 'create') return '#/create';
   if (route.name === 'profile') return '#/profile';
   if (route.name === 'filter') return '#/filter';
@@ -111,7 +116,7 @@ export function goBack() {
   }
 }
 
-export function navigateToTab(tab: 'find' | 'my-meetups' | 'create' | 'profile') {
+export function navigateToTab(tab: 'find' | 'my-meetups' | 'chats' | 'create' | 'profile') {
   _history = [];
   window.location.hash = `#/${tab}`;
 }

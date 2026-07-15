@@ -21,6 +21,7 @@
   import MapRoute from "./routes/MapRoute.svelte";
   import FilterRoute from "./routes/FilterRoute.svelte";
   import ChatRoute from "./routes/ChatRoute.svelte";
+  import ChatsListRoute from "./routes/ChatsListRoute.svelte";
   import ManageRoute from "./routes/ManageRoute.svelte";
   import Icon from "./lib/Icon.svelte";
 
@@ -446,6 +447,12 @@
       </li>
       <li>
         <button
+          class="nav-link {route.name === 'chats' ? 'active' : ''}"
+          onclick={() => navigateToTab("chats")}>Trò chuyện</button
+        >
+      </li>
+      <li>
+        <button
           class="nav-link {route.name === 'create' ? 'active' : ''}"
           onclick={() => navigateToTab("create")}
         >
@@ -537,6 +544,8 @@
       {addToast}
       isLoading={isMeetupsLoading}
     />
+  {:else if route.name === "chats"}
+    <ChatsListRoute meetups={allMeetups} />
   {:else if route.name === "map"}
     <MapRoute
       meetups={allMeetups}
@@ -613,6 +622,23 @@
         <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" stroke-width="2.5" />
       </svg>
       <span>Các kèo</span>
+    </button>
+
+    <button
+      class="mobile-nav-item {route.name === 'chats' ? 'active' : ''}"
+      onclick={() => navigateToTab("chats")}
+    >
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+      </svg>
+      <span>Trò chuyện</span>
     </button>
 
     <button
