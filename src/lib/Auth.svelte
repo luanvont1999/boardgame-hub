@@ -51,6 +51,8 @@
     return unsubscribe;
   });
 
+  import { userProfileState } from "./userProfile.svelte";
+
   async function handleEmailAuth(e: Event) {
     e.preventDefault();
     if (!email || !password) {
@@ -64,10 +66,16 @@
 
     try {
       if (isLoginMode) {
-        await signInWithEmailAndPassword(auth, email, password);
+        const cred = await signInWithEmailAndPassword(auth, email, password);
+        if (cred.user) {
+          await userProfileState.fetchProfile(cred.user.uid, cred.user.displayName);
+        }
         successMessage = "Đăng nhập thành công!";
       } else {
-        await createUserWithEmailAndPassword(auth, email, password);
+        const cred = await createUserWithEmailAndPassword(auth, email, password);
+        if (cred.user) {
+          await userProfileState.fetchProfile(cred.user.uid, cred.user.displayName);
+        }
         successMessage = "Đăng ký tài khoản thành công!";
       }
     } catch (err: any) {
@@ -84,7 +92,10 @@
     isSubmitting = true;
 
     try {
-      await signInWithPopup(auth, googleProvider);
+      const cred = await signInWithPopup(auth, googleProvider);
+      if (cred.user) {
+        await userProfileState.fetchProfile(cred.user.uid, cred.user.displayName);
+      }
       successMessage = "Đăng nhập Google thành công!";
     } catch (err: any) {
       console.error(err);

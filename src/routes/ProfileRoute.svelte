@@ -60,6 +60,12 @@
     return unsubscribe;
   });
 
+  $effect(() => {
+    if (auth.currentUser !== currentUser) {
+      currentUser = auth.currentUser;
+    }
+  });
+
   function toggleCategory(catId: string) {
     if (favoriteCategories.includes(catId)) {
       favoriteCategories = favoriteCategories.filter((id) => id !== catId);

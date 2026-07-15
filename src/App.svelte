@@ -50,9 +50,24 @@
   let createLng = $state<number | null>(null);
   let createAddressText = $state<string>("");
 
-  // GPS + Filter shared state
-  let selectedCity = $state<"all" | "HCM" | "HN">("all");
-  let selectedDistance = $state<"all" | "5" | "10">("all");
+  // GPS + Filter shared state with localStorage persistence
+  const savedCity = (typeof localStorage !== "undefined" && localStorage.getItem("filter_city")) as "all" | "HCM" | "HN";
+  const savedDistance = (typeof localStorage !== "undefined" && localStorage.getItem("filter_distance")) as "all" | "5" | "10";
+
+  let selectedCity = $state<"all" | "HCM" | "HN">(
+    ["all", "HCM", "HN"].includes(savedCity) ? savedCity : "all"
+  );
+  let selectedDistance = $state<"all" | "5" | "10">(
+    ["all", "5", "10"].includes(savedDistance) ? savedDistance : "all"
+  );
+
+  $effect(() => {
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem("filter_city", selectedCity);
+      localStorage.setItem("filter_distance", selectedDistance);
+    }
+  });
+
   let userLat = $state<number | null>(null);
   let userLng = $state<number | null>(null);
   let isTrackingGPS = $state<boolean>(false);
@@ -194,16 +209,36 @@
     onSnapshot(
       collection(db, "meetups"),
       async (snapshot) => {
-        if (snapshot.empty) {
-          for (const seed of SEED_MEETUPS)
-            await setDoc(doc(db, "meetups", seed.id), seed);
-        } else {
-          allMeetups = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+        try {
+          if (snapshot.empty) {
+            if (auth.currentUser) {
+              for (const seed of SEED_MEETUPS) {
+                try {
+                  await setDoc(doc(db, "meetups", seed.id), seed);
+                } catch (e) {
+                  console.warn("[Firestore] Seed failed:", e);
+                }
+              }
+            } else {
+              allMeetups = SEED_MEETUPS;
+            }
+          } else {
+            allMeetups = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+          }
+        } catch (e) {
+          console.error("[Firestore] snapshot process error:", e);
+          if (allMeetups.length === 0) {
+            allMeetups = SEED_MEETUPS;
+          }
+        } finally {
+          hasLoadedInitialMeetups = true;
         }
-        hasLoadedInitialMeetups = true;
       },
       (err) => {
-        console.error("[Firestore] meetups error:", err);
+        console.error("[Firestore] meetups subscription error:", err);
+        if (allMeetups.length === 0) {
+          allMeetups = SEED_MEETUPS;
+        }
         hasLoadedInitialMeetups = true;
       },
     );

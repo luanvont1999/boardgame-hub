@@ -60,6 +60,12 @@
     });
   });
 
+  $effect(() => {
+    if (auth.currentUser !== currentUser) {
+      currentUser = auth.currentUser;
+    }
+  });
+
   onDestroy(() => {
     if (unsubscribeAuth) unsubscribeAuth();
   });

@@ -32,6 +32,12 @@
     return unsub;
   });
 
+  $effect(() => {
+    if (auth.currentUser !== currentUser) {
+      currentUser = auth.currentUser;
+    }
+  });
+
   function handleCreateSuccess() {
     selectedLat = null;
     selectedLng = null;

@@ -52,15 +52,22 @@ class UserProfileState {
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
         const data = docSnap.data();
-        this.profile.displayName = data.displayName || defaultDisplayName || "";
-        this.profile.bio = data.bio || "";
-        this.profile.favoriteCategories = data.favoriteCategories || [];
+        this.profile = {
+          uid,
+          displayName: data.displayName || defaultDisplayName || "",
+          bio: data.bio || "",
+          favoriteCategories: data.favoriteCategories || [],
+          loaded: true,
+        };
       } else {
-        this.profile.displayName = defaultDisplayName || "";
-        this.profile.bio = "";
-        this.profile.favoriteCategories = [];
+        this.profile = {
+          uid,
+          displayName: defaultDisplayName || "",
+          bio: "",
+          favoriteCategories: [],
+          loaded: true,
+        };
       }
-      this.profile.loaded = true;
     } catch (err) {
       console.error("Lỗi tải thông tin user profile:", err);
     } finally {
@@ -81,10 +88,13 @@ class UserProfileState {
       }, { merge: true });
 
       // Update local state
-      this.profile.displayName = data.displayName;
-      this.profile.bio = data.bio;
-      this.profile.favoriteCategories = data.favoriteCategories;
-      this.profile.loaded = true;
+      this.profile = {
+        uid: this.profile.uid,
+        displayName: data.displayName,
+        bio: data.bio,
+        favoriteCategories: data.favoriteCategories,
+        loaded: true,
+      };
     } catch (err) {
       console.error("Lỗi cập nhật user profile:", err);
       throw err;

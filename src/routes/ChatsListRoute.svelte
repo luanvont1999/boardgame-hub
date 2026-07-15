@@ -32,6 +32,12 @@
     });
   });
 
+  $effect(() => {
+    if (auth.currentUser !== currentUser) {
+      currentUser = auth.currentUser;
+    }
+  });
+
   onDestroy(() => {
     if (authUnsubscribe) authUnsubscribe();
     unsubscribes.forEach((unsub) => unsub());
