@@ -40,14 +40,14 @@ var (
 	meetupStore = store.NewMeetupStore()
 )
 
-func getAccessToken() (string, error) {
+func getAccessToken() (string, string, error) {
 	var sa ServiceAccount
 
 	// Thử đọc trực tiếp nội dung JSON từ biến môi trường
 	saJSON := os.Getenv("FIREBASE_SERVICE_ACCOUNT_JSON")
 	if saJSON != "" {
 		if err := json.Unmarshal([]byte(saJSON), &sa); err != nil {
-			return "", fmt.Errorf("lỗi unmarshal service account từ biến môi trường: %v", err)
+			return "", "", fmt.Errorf("lỗi unmarshal service account từ biến môi trường: %v", err)
 		}
 	} else {
 		// Fallback đọc file cục bộ (local dev)
@@ -58,23 +58,23 @@ func getAccessToken() (string, error) {
 
 		data, err := ioutil.ReadFile(saPath)
 		if err != nil {
-			return "", fmt.Errorf("không thể đọc file service account %s: %v", saPath, err)
+			return "", "", fmt.Errorf("không thể đọc file service account %s: %v", saPath, err)
 		}
 
 		if err := json.Unmarshal(data, &sa); err != nil {
-			return "", fmt.Errorf("lỗi unmarshal service account từ file: %v", err)
+			return "", "", fmt.Errorf("lỗi unmarshal service account từ file: %v", err)
 		}
 	}
 
 	// Parse private key
 	block, _ := pem.Decode([]byte(sa.PrivateKey))
 	if block == nil {
-		return "", errors.New("lỗi decode PEM private key")
+		return "", "", errors.New("lỗi decode PEM private key")
 	}
 
 	privKey, err := x509.ParsePKCS8PrivateKey(block.Bytes)
 	if err != nil {
-		return "", fmt.Errorf("lỗi parse private key: %v", err)
+		return "", "", fmt.Errorf("lỗi parse private key: %v", err)
 	}
 
 	// Tạo claims
@@ -91,7 +91,7 @@ func getAccessToken() (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
 	jwtToken, err := token.SignedString(privKey)
 	if err != nil {
-		return "", fmt.Errorf("lỗi ký token: %v", err)
+		return "", "", fmt.Errorf("lỗi ký token: %v", err)
 	}
 
 	// Request access token từ Google
@@ -100,7 +100,7 @@ func getAccessToken() (string, error) {
 		"assertion":  {jwtToken},
 	})
 	if err != nil {
-		return "", fmt.Errorf("lỗi gửi request lấy access token: %v", err)
+		return "", "", fmt.Errorf("lỗi gửi request lấy access token: %v", err)
 	}
 	defer resp.Body.Close()
 
@@ -109,23 +109,22 @@ func getAccessToken() (string, error) {
 		Error       string `json:"error"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return "", fmt.Errorf("lỗi decode access token response: %v", err)
+		return "", "", fmt.Errorf("lỗi decode access token response: %v", err)
 	}
 
 	if result.Error != "" {
-		return "", fmt.Errorf("lỗi Google OAuth: %s", result.Error)
+		return "", "", fmt.Errorf("lỗi Google OAuth: %s", result.Error)
 	}
 
-	return result.AccessToken, nil
+	return result.AccessToken, sa.ProjectID, nil
 }
 
 func sendFCMNotification(token, title, body, clickAction string) error {
-	accessToken, err := getAccessToken()
+	accessToken, projectID, err := getAccessToken()
 	if err != nil {
 		return fmt.Errorf("lỗi lấy access token: %v", err)
 	}
 
-	projectID := "boardgame-hub-7f7a2"
 	urlStr := fmt.Sprintf("https://fcm.googleapis.com/v1/projects/%s/messages:send", projectID)
 
 	payload := map[string]interface{}{
@@ -359,12 +358,12 @@ func buildFirestoreDocument(m *MeetupData) *FirestoreDocument {
 }
 
 func getFirestoreMeetup(meetupId string) (*MeetupData, error) {
-	accessToken, err := getAccessToken()
+	accessToken, projectID, err := getAccessToken()
 	if err != nil {
 		return nil, err
 	}
 
-	urlStr := fmt.Sprintf("https://firestore.googleapis.com/v1/projects/boardgame-hub-7f7a2/databases/(default)/documents/meetups/%s", meetupId)
+	urlStr := fmt.Sprintf("https://firestore.googleapis.com/v1/projects/%s/databases/(default)/documents/meetups/%s", projectID, meetupId)
 	req, err := http.NewRequest("GET", urlStr, nil)
 	if err != nil {
 		return nil, err
@@ -392,7 +391,7 @@ func getFirestoreMeetup(meetupId string) (*MeetupData, error) {
 }
 
 func updateFirestoreMeetup(m *MeetupData, updateFields []string) error {
-	accessToken, err := getAccessToken()
+	accessToken, projectID, err := getAccessToken()
 	if err != nil {
 		return err
 	}
@@ -403,7 +402,7 @@ func updateFirestoreMeetup(m *MeetupData, updateFields []string) error {
 		return err
 	}
 
-	u, _ := url.Parse(fmt.Sprintf("https://firestore.googleapis.com/v1/projects/boardgame-hub-7f7a2/databases/(default)/documents/meetups/%s", m.ID))
+	u, _ := url.Parse(fmt.Sprintf("https://firestore.googleapis.com/v1/projects/%s/databases/(default)/documents/meetups/%s", projectID, m.ID))
 	q := u.Query()
 	for _, field := range updateFields {
 		q.Add("updateMask.fieldPaths", field)
@@ -433,12 +432,12 @@ func updateFirestoreMeetup(m *MeetupData, updateFields []string) error {
 }
 
 func setFirestoreRequest(meetupId, userUid, userName, status string) error {
-	accessToken, err := getAccessToken()
+	accessToken, projectID, err := getAccessToken()
 	if err != nil {
 		return err
 	}
 
-	urlStr := fmt.Sprintf("https://firestore.googleapis.com/v1/projects/boardgame-hub-7f7a2/databases/(default)/documents/meetups/%s/requests/%s", meetupId, userUid)
+	urlStr := fmt.Sprintf("https://firestore.googleapis.com/v1/projects/%s/databases/(default)/documents/meetups/%s/requests/%s", projectID, meetupId, userUid)
 
 	fields := map[string]FirestoreField{
 		"uid":    {StringValue: userUid},
@@ -473,12 +472,12 @@ func setFirestoreRequest(meetupId, userUid, userName, status string) error {
 }
 
 func updateFirestoreRequestStatus(meetupId, userUid, status string) error {
-	accessToken, err := getAccessToken()
+	accessToken, projectID, err := getAccessToken()
 	if err != nil {
 		return err
 	}
 
-	urlStr := fmt.Sprintf("https://firestore.googleapis.com/v1/projects/boardgame-hub-7f7a2/databases/(default)/documents/meetups/%s/requests/%s?updateMask.fieldPaths=status", meetupId, userUid)
+	urlStr := fmt.Sprintf("https://firestore.googleapis.com/v1/projects/%s/databases/(default)/documents/meetups/%s/requests/%s?updateMask.fieldPaths=status", projectID, meetupId, userUid)
 
 	doc := FirestoreDocument{
 		Fields: map[string]FirestoreField{
@@ -512,12 +511,12 @@ func updateFirestoreRequestStatus(meetupId, userUid, status string) error {
 }
 
 func deleteFirestoreRequest(meetupId, userUid string) error {
-	accessToken, err := getAccessToken()
+	accessToken, projectID, err := getAccessToken()
 	if err != nil {
 		return err
 	}
 
-	urlStr := fmt.Sprintf("https://firestore.googleapis.com/v1/projects/boardgame-hub-7f7a2/databases/(default)/documents/meetups/%s/requests/%s", meetupId, userUid)
+	urlStr := fmt.Sprintf("https://firestore.googleapis.com/v1/projects/%s/databases/(default)/documents/meetups/%s/requests/%s", projectID, meetupId, userUid)
 	req, err := http.NewRequest("DELETE", urlStr, nil)
 	if err != nil {
 		return err
@@ -835,7 +834,7 @@ func NewRouter() *http.ServeMux {
 		// 3. Gửi push notification đến Host
 		if meetup.HostFcmToken != "" {
 			bodyText := fmt.Sprintf("%s muốn xin vào kèo \"%s\" chơi game %s của bạn.", req.UserName, meetup.Title, meetup.Game)
-			_ = sendFCMNotification(meetup.HostFcmToken, "🎯 Yêu cầu tham gia kèo mới!", bodyText, "/?route=manage&meetupId="+req.MeetupID)
+			_ = sendFCMNotification(meetup.HostFcmToken, "🎯 Yêu cầu tham gia kèo mới!", bodyText, "/#/manage/"+req.MeetupID)
 		}
 
 		w.Header().Set("Content-Type", "application/json")
@@ -927,7 +926,7 @@ func NewRouter() *http.ServeMux {
 				host = "Host"
 			}
 			bodyText := fmt.Sprintf("Bạn đã được duyệt tham gia kèo \"%s\" chơi game %s của %s! Hãy bấm vào đây để xác nhận tham gia kèo chính thức.", meetup.Title, meetup.Game, host)
-			_ = sendFCMNotification(playerToken, "🎉 Yêu cầu đã được duyệt!", bodyText, "/?route=manage&meetupId="+req.MeetupID)
+			_ = sendFCMNotification(playerToken, "🎉 Yêu cầu đã được duyệt!", bodyText, "/#/manage/"+req.MeetupID)
 		}
 
 		w.Header().Set("Content-Type", "application/json")
@@ -1026,7 +1025,7 @@ func NewRouter() *http.ServeMux {
 				token = meetup.HostFcmToken
 			}
 			if token != "" {
-				_ = sendFCMNotification(token, "➕ Kèo có thêm người chơi mới!", bodyText, "/?route=manage&meetupId="+req.MeetupID)
+				_ = sendFCMNotification(token, "➕ Kèo có thêm người chơi mới!", bodyText, "/#/manage/"+req.MeetupID)
 			}
 		}
 
@@ -1145,7 +1144,7 @@ func NewRouter() *http.ServeMux {
 					token = meetup.HostFcmToken
 				}
 				if token != "" {
-					_ = sendFCMNotification(token, "👋 Thành viên đã rời kèo", bodyText, "/?route=manage&meetupId="+req.MeetupID)
+					_ = sendFCMNotification(token, "👋 Thành viên đã rời kèo", bodyText, "/#/manage/"+req.MeetupID)
 				}
 			}
 		} else {
@@ -1167,7 +1166,7 @@ func NewRouter() *http.ServeMux {
 					token = meetup.HostFcmToken
 				}
 				if token != "" {
-					_ = sendFCMNotification(token, "🚪 Thành viên rời kèo", bodyText, "/?route=manage&meetupId="+req.MeetupID)
+					_ = sendFCMNotification(token, "🚪 Thành viên rời kèo", bodyText, "/#/manage/"+req.MeetupID)
 				}
 			}
 		}

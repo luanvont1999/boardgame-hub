@@ -1,203 +1,246 @@
 <script lang="ts">
+  import { onMount } from "svelte";
   import Auth from "../lib/Auth.svelte";
-  import { getDocs, collection } from "firebase/firestore";
-  import { db } from "../lib/firebase";
+  import { doc, getDoc, setDoc } from "firebase/firestore";
+  import { db, auth } from "../lib/firebase";
+  import { onAuthStateChanged, updateProfile, type User } from "firebase/auth";
 
   interface Props {
-    apiStatus: "online" | "offline" | "connecting";
-    apiMessage: string;
-    apiCode: number | null;
-    apiBase: string;
-    isChecking: boolean;
-    onCheckHealth: () => void;
     addToast: (msg: string, type: "success" | "error" | "info") => void;
+    deferredPrompt: any;
+    isIOS: boolean;
+    isStandalone: boolean;
+    onTriggerInstall: () => void;
   }
 
   let {
-    apiStatus,
-    apiMessage,
-    apiCode,
-    apiBase,
-    isChecking,
-    onCheckHealth,
     addToast,
+    deferredPrompt,
+    isIOS,
+    isStandalone,
+    onTriggerInstall,
   }: Props = $props();
 
-  let isBroadcasting = $state(false);
-  let debugLogs = $state<string[]>([]);
+  const BOARDGAME_CATEGORIES = [
+    { id: "strategy", label: "Strategy (Chiến thuật) 🧠" },
+    { id: "party", label: "Party Game (Vui nhộn) 🎉" },
+    { id: "family", label: "Family (Gia đình) 🏠" },
+    { id: "coop", label: "Co-op (Hợp tác) 🤝" },
+    { id: "bluffing", label: "Bluffing (Ẩn vai) 🎭" },
+    { id: "rpg", label: "RPG (Nhập vai) ⚔️" },
+    { id: "economic", label: "Economic (Kinh tế) 📊" },
+    { id: "engine", label: "Engine Building (Xây dựng) ⚙️" }
+  ];
 
-  async function handleBroadcastTest() {
-    if (isBroadcasting) return;
-    isBroadcasting = true;
-    debugLogs = [];
-    debugLogs.push("> [FCM] Đang quét Firestore lấy danh sách token...");
-    addToast("🔄 Đang quét thiết bị và gửi thông báo thử nghiệm...", "info");
+  let currentUser = $state<User | null>(null);
+  let isSaving = $state(false);
+  let isLoading = $state(true);
+
+  // Form states
+  let displayName = $state("");
+  let bio = $state("");
+  let favoriteCategories = $state<string[]>([]);
+
+  onMount(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      currentUser = user;
+      if (user) {
+        isLoading = true;
+        try {
+          const docRef = doc(db, "users", user.uid);
+          const docSnap = await getDoc(docRef);
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            displayName = data.displayName || user.displayName || "";
+            bio = data.bio || "";
+            favoriteCategories = data.favoriteCategories || [];
+          } else {
+            displayName = user.displayName || "";
+            bio = "";
+            favoriteCategories = [];
+          }
+        } catch (err) {
+          console.error("Lỗi tải thông tin profile từ Firestore:", err);
+        } finally {
+          isLoading = false;
+        }
+      } else {
+        displayName = "";
+        bio = "";
+        favoriteCategories = [];
+        isLoading = false;
+      }
+    });
+
+    return unsubscribe;
+  });
+
+  function toggleCategory(catId: string) {
+    if (favoriteCategories.includes(catId)) {
+      favoriteCategories = favoriteCategories.filter(id => id !== catId);
+    } else {
+      favoriteCategories = [...favoriteCategories, catId];
+    }
+  }
+
+  async function handleSaveProfile(e: Event) {
+    e.preventDefault();
+    if (!currentUser) return;
+    isSaving = true;
 
     try {
-      const querySnapshot = await getDocs(collection(db, "users"));
-      const tokens: string[] = [];
-
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        if (data && data.fcmToken) {
-          tokens.push(data.fcmToken);
-          debugLogs.push(
-            `+ Tìm thấy token của UID: ${doc.id.substring(0, 6)}...`,
-          );
-        }
+      // 1. Cập nhật profile Firebase Auth
+      await updateProfile(currentUser, {
+        displayName: displayName
       });
 
-      debugLogs.push(`> [FCM] Tổng số thiết bị tìm thấy: ${tokens.length}`);
-      if (tokens.length === 0) {
-        debugLogs.push("! [ERROR] Không tìm thấy thiết bị nào đăng ký token.");
-        addToast("Không tìm thấy thiết bị nào đăng ký token!", "error");
-        isBroadcasting = false;
-        return;
-      }
+      // 2. Cập nhật thông tin Firestore
+      const userRef = doc(db, "users", currentUser.uid);
+      await setDoc(userRef, {
+        displayName,
+        bio,
+        favoriteCategories,
+        updatedAt: new Date()
+      }, { merge: true });
 
-      debugLogs.push("> [FCM] Đang gửi yêu cầu đẩy đến Backend Go...");
-      const API_BASE = apiBase || "";
-      const res = await fetch(`${API_BASE}/api/send-notification`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          fcmTokens: tokens,
-          title: "📣 Thông báo thử nghiệm!",
-          body: "Hệ thống thông báo đẩy Boardgame Luna đang hoạt động bình thường trên thiết bị di động của bạn!",
-          clickAction: "/?route=profile",
-        }),
-      });
-
-      debugLogs.push(
-        `> [FCM] HTTP Status từ Backend: ${res.status} ${res.statusText}`,
-      );
-
-      const text = await res.text();
-      debugLogs.push(
-        `> [FCM] Nội dung phản hồi thô: ${text.substring(0, 120)}${text.length > 120 ? "..." : ""}`,
-      );
-
-      let data;
-      try {
-        data = JSON.parse(text);
-      } catch (parseErr: any) {
-        debugLogs.push(`! [PARSE ERROR] Phản hồi không phải JSON hợp lệ.`);
-        addToast("Lỗi định dạng phản hồi (Không phải JSON)!", "error");
-        isBroadcasting = false;
-        return;
-      }
-
-      if (data.success) {
-        debugLogs.push(`* [SUCCESS] ${data.message}`);
-        addToast(data.message, "success");
-      } else {
-        debugLogs.push(`! [WARNING] ${data.warning || "Gửi thất bại"}`);
-        addToast(data.warning || "Gửi broadcast thất bại!", "error");
-      }
-
-      if (data.errors && data.errors.length > 0) {
-        debugLogs.push("> Chi tiết lỗi gửi FCM:");
-        data.errors.forEach((errStr: string) => {
-          debugLogs.push(`  - Lỗi: ${errStr}`);
-        });
-      }
+      addToast("🎉 Cập nhật thông tin cá nhân thành công!", "success");
     } catch (err: any) {
-      debugLogs.push(`! [SYSTEM ERROR]: ${err.message}`);
-      addToast("Lỗi hệ thống: " + err.message, "error");
+      console.error("Lỗi cập nhật profile:", err);
+      addToast("Không thể cập nhật hồ sơ: " + err.message, "error");
     } finally {
-      isBroadcasting = false;
+      isSaving = false;
     }
   }
 </script>
 
-<section id="profile-route" style="padding-bottom: 40px;">
+<section id="profile-route" style="padding-bottom: 60px;">
   <h2 class="section-title">Hồ Sơ Của Bạn</h2>
   <Auth />
 
-  <!-- Dev Tools – API Status Console -->
+  <!-- PWA Install Section (Neo-brutalist Style) -->
+  {#if deferredPrompt || (isIOS && !isStandalone)}
+    <div class="cartoon-card install-pwa-card" style="margin-top: 24px; padding: 20px; background-color: #fffefb; text-align: left;">
+      <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 8px; color: var(--text-dark);">📱 Cài đặt Ứng dụng PWA</h3>
+      <p style="font-size: 0.9rem; font-weight: 500; color: var(--text-muted); margin-bottom: 16px; line-height: 1.4;">
+        Cài đặt Boardgame Luna về màn hình chính điện thoại của bạn để trải nghiệm tốc độ mượt mà hơn và nhận thông báo đẩy tức thì như một ứng dụng di động thực thụ!
+      </p>
+      <button 
+        type="button" 
+        class="btn btn-warning install-pwa-btn" 
+        style="padding: 10px 20px; font-size: 0.95rem; font-weight: 800; background-color: var(--pastel-yellow, #ffe869) !important; color: #1e1e24 !important; border: 3px solid #1e1e24; box-shadow: 4px 4px 0px #1e1e24;"
+        onclick={onTriggerInstall}
+      >
+        Cài đặt ứng dụng ngay 🚀
+      </button>
+    </div>
+  {/if}
+
+  <!-- Profile Edit Section -->
   <div style="margin-top: 40px;">
-    <h3
-      style="font-size: 1.1rem; color: var(--text-muted); font-weight: 700; margin-bottom: 12px;"
-    >
-      CÔNG CỤ PHÁT TRIỂN (API STATUS)
+    <h3 style="font-size: 1.1rem; color: var(--text-muted); font-weight: 700; margin-bottom: 16px; text-transform: uppercase;">
+      ⚙️ Thiết lập hồ sơ cá nhân
     </h3>
-    <section class="retro-console" id="status" style="margin-top: 0;">
-      <div class="console-screen">
-        <div class="console-text-row">
-          <span class="console-label">SERVER ADDR:</span>
-          <span class="console-val">{apiBase || "Auto (Relative)"}</span>
-        </div>
-        <div class="console-text-row">
-          <span class="console-label">ENDPOINT:</span>
-          <span class="console-val">/api/health & /api/send-notification</span>
-        </div>
-        <div class="console-text-row">
-          <span class="console-label">STATUS CODE:</span>
-          <span class="console-val">{apiCode !== null ? apiCode : "---"}</span>
-        </div>
-        <div class="console-text-row">
-          <span class="console-label">RESPONSE:</span>
-          <span
-            class="console-val {apiStatus === 'online'
-              ? 'online'
-              : apiStatus === 'offline'
-                ? 'offline'
-                : 'connecting'}"
-          >
-            {apiMessage}
-          </span>
+
+    {#if isLoading}
+      <div class="cartoon-card" style="padding: 24px; text-align: center;">
+        <div class="spinner" style="margin: 0 auto 12px auto;"></div>
+        <p style="font-weight: 500; color: var(--text-muted);">Đang tải dữ liệu hồ sơ...</p>
+      </div>
+    {:else if currentUser}
+      <form onsubmit={handleSaveProfile} class="cartoon-card profile-edit-form" style="padding: 24px; background-color: #fffefb; text-align: left; display: flex; flex-direction: column; gap: 20px;">
+        
+        <div class="form-group" style="display: flex; flex-direction: column; gap: 8px;">
+          <label for="displayName" style="font-weight: 700; color: var(--text-dark); font-size: 0.95rem;">Biệt danh hiển thị:</label>
+          <input 
+            type="text" 
+            id="displayName" 
+            placeholder="Tên của bạn chơi..." 
+            bind:value={displayName}
+            required
+            style="padding: 12px; font-size: 0.95rem; font-weight: 600; border: 3px solid #1e1e24; border-radius: 8px; background-color: #ffffff; box-shadow: 3px 3px 0px #1e1e24; outline: none;"
+          />
         </div>
 
-        <!-- Live Console Logger -->
-        {#if debugLogs.length > 0}
-          <div
-            style="border-top: 1.5px dashed #1e1e24; margin-top: 12px; padding-top: 10px; font-family: monospace; font-size: 0.8rem; color: #a4f0fd; text-align: left; max-height: 180px; overflow-y: auto; white-space: pre-wrap;"
-          >
-            {#each debugLogs as log}
-              <div style="margin-bottom: 4px; line-height: 1.3;">{log}</div>
+        <div class="form-group" style="display: flex; flex-direction: column; gap: 8px;">
+          <label for="bio" style="font-weight: 700; color: var(--text-dark); font-size: 0.95rem;">Lời tự giới thiệu:</label>
+          <textarea 
+            id="bio" 
+            placeholder="Kinh nghiệm chơi, câu nói ưa thích hoặc nhóm boardgame đang hoạt động..." 
+            bind:value={bio}
+            rows="3"
+            style="padding: 12px; font-size: 0.95rem; font-weight: 600; border: 3px solid #1e1e24; border-radius: 8px; background-color: #ffffff; box-shadow: 3px 3px 0px #1e1e24; outline: none; resize: vertical;"
+          ></textarea>
+        </div>
+
+        <div class="form-group" style="display: flex; flex-direction: column; gap: 10px;">
+          <span style="font-weight: 700; color: var(--text-dark); font-size: 0.95rem;">Thể loại boardgame yêu thích:</span>
+          <div class="categories-chips-grid" style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 4px;">
+            {#each BOARDGAME_CATEGORIES as cat}
+              {@const isSelected = favoriteCategories.includes(cat.id)}
+              <button
+                type="button"
+                class="category-chip-btn {isSelected ? 'selected' : ''}"
+                onclick={() => toggleCategory(cat.id)}
+                style="padding: 8px 14px; font-size: 0.85rem; font-weight: 700; border: 3px solid #1e1e24; border-radius: 100px; cursor: pointer; transition: transform 0.1s ease, box-shadow 0.1s ease; outline: none;
+                       background-color: {isSelected ? 'var(--pastel-yellow, #ffe869)' : '#ffffff'};
+                       box-shadow: {isSelected ? '2px 2px 0px #1e1e24' : '3px 3px 0px #1e1e24'};
+                       transform: {isSelected ? 'translate(1px, 1px)' : 'none'};"
+              >
+                {cat.label}
+              </button>
             {/each}
           </div>
-        {/if}
-      </div>
-
-      <div
-        class="console-controls"
-        style="display: flex; flex-direction: column; gap: 15px; align-items: stretch;"
-      >
-        <div class="led-indicator">
-          {#if apiStatus === "online"}
-            <span class="led-dot led-online"></span><span>ONLINE</span>
-          {:else if apiStatus === "offline"}
-            <span class="led-dot led-offline"></span><span>OFFLINE</span>
-          {:else}
-            <span class="led-dot led-connecting"></span><span>PINGING</span>
-          {/if}
         </div>
-        <div
-          class="console-buttons"
-          style="display: flex; flex-wrap: wrap; gap: 10px;"
+
+        <button 
+          type="submit" 
+          class="btn btn-primary" 
+          disabled={isSaving}
+          style="align-self: flex-start; padding: 12px 24px; font-size: 0.95rem; font-weight: 800; border: 3px solid #1e1e24; border-radius: 8px; background-color: #9ee3b2 !important; color: #1e1e24 !important; box-shadow: 4px 4px 0px #1e1e24; cursor: pointer;"
         >
-          <button
-            class="btn btn-success"
-            style="padding: 8px 16px; font-size: 0.9rem; flex: 1; min-width: 100px;"
-            onclick={onCheckHealth}
-            disabled={isChecking}
-          >
-            {isChecking ? "Pinging..." : "PING API"}
-          </button>
+          {isSaving ? "Đang lưu..." : "Lưu thông tin hồ sơ 💾"}
+        </button>
 
-          <button
-            class="btn btn-primary"
-            style="padding: 8px 16px; font-size: 0.9rem; flex: 1; min-width: 160px; background-color: var(--pastel-yellow, #ffe869) !important; color: #1e1e24 !important;"
-            onclick={handleBroadcastTest}
-            disabled={isBroadcasting}
-          >
-            {isBroadcasting ? "Broadcasting..." : "BROADCAST TEST 📣"}
-          </button>
-        </div>
+      </form>
+    {:else}
+      <div class="cartoon-card" style="padding: 32px; background-color: #fffefb; text-align: center;">
+        <span style="font-size: 2.5rem; display: block; margin-bottom: 12px;">🔒</span>
+        <h4 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 8px; color: var(--text-dark);">Hồ Sơ Chưa Được Kích Hoạt</h4>
+        <p style="font-size: 0.9rem; font-weight: 500; color: var(--text-muted); max-width: 320px; margin: 0 auto;">
+          Vui lòng đăng nhập hoặc tạo tài khoản mới ở trên để bắt đầu tùy chỉnh thông tin cá nhân của bạn chơi!
+        </p>
       </div>
-    </section>
+    {/if}
   </div>
 </section>
+
+<style>
+  /* Local spinner */
+  .spinner {
+    width: 32px;
+    height: 32px;
+    border: 4px solid rgba(30, 30, 37, 0.1);
+    border-top: 4px solid #1e1e24;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
+  /* Chip hover effects */
+  .category-chip-btn:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: 4px 4px 0px #1e1e24;
+  }
+  .category-chip-btn.selected:hover {
+    transform: translate(1px, 1px);
+    box-shadow: 2px 2px 0px #1e1e24;
+  }
+  .category-chip-btn:active {
+    transform: translate(3px, 3px);
+    box-shadow: 0px 0px 0px #1e1e24;
+  }
+</style>

@@ -42,6 +42,7 @@
     selectedDistance: "all" | "5" | "10";
     isTrackingGPS: boolean;
     gpsError: boolean;
+    showFilterBar?: boolean;
   }
 
   let {
@@ -52,6 +53,7 @@
     selectedDistance = $bindable("all"),
     isTrackingGPS,
     gpsError,
+    showFilterBar = true,
   }: Props = $props();
 
   let currentUser = $state<User | null>(auth.currentUser);
@@ -178,45 +180,47 @@
 
 <div class="meetup-list-container">
   <!-- Cartoon Trigger Bar for Search Filter Modal -->
-  <div class="cartoon-card filter-trigger-card">
-    <div class="filter-trigger-info">
-      <div class="filter-trigger-header">
-        <span class="filter-title-icon">🎲</span>
-        <h3>Danh Sách Kèo Chơi Boardgame</h3>
+  {#if showFilterBar}
+    <div class="cartoon-card filter-trigger-card">
+      <div class="filter-trigger-info">
+        <div class="filter-trigger-header">
+          <span class="filter-title-icon">🎲</span>
+          <h3>Danh Sách Kèo Chơi Boardgame</h3>
+        </div>
+
+        <!-- Active Filter Badges -->
+        <div class="active-filter-badges">
+          <span class="badge-chip">
+            📍 Khu vực: <strong
+              >{selectedCity === "all"
+                ? "Tất cả"
+                : selectedCity === "HCM"
+                  ? "TP. HCM"
+                  : "Hà Nội"}</strong
+            >
+          </span>
+          <span class="badge-chip">
+            📏 Khoảng cách: <strong
+              >{selectedDistance === "all"
+                ? "Mọi khoảng cách"
+                : `< ${selectedDistance} km`}</strong
+            >
+          </span>
+          {#if userLat !== null}
+            <span class="badge-chip gps-on-chip"> 🎯 GPS Bật </span>
+          {/if}
+        </div>
       </div>
 
-      <!-- Active Filter Badges -->
-      <div class="active-filter-badges">
-        <span class="badge-chip">
-          📍 Khu vực: <strong
-            >{selectedCity === "all"
-              ? "Tất cả"
-              : selectedCity === "HCM"
-                ? "TP. HCM"
-                : "Hà Nội"}</strong
-          >
-        </span>
-        <span class="badge-chip">
-          📏 Khoảng cách: <strong
-            >{selectedDistance === "all"
-              ? "Mọi khoảng cách"
-              : `< ${selectedDistance} km`}</strong
-          >
-        </span>
-        {#if userLat !== null}
-          <span class="badge-chip gps-on-chip"> 🎯 GPS Bật </span>
-        {/if}
-      </div>
+      <button
+        type="button"
+        class="btn btn-primary filter-trigger-btn"
+        onclick={openFilter}
+      >
+        🔍 Bộ Lọc Tìm Kiếm ⚙️
+      </button>
     </div>
-
-    <button
-      type="button"
-      class="btn btn-primary filter-trigger-btn"
-      onclick={openFilter}
-    >
-      🔍 Bộ Lọc Tìm Kiếm ⚙️
-    </button>
-  </div>
+  {/if}
 
   <!-- Meetups Cards Grid -->
 
@@ -314,7 +318,7 @@
             {#if userIsMember}
               <button
                 class="btn btn-primary action-btn"
-                onclick={() => navigate({ name: "chat", meetup })}
+                onclick={() => navigate({ name: "chat", meetupId: meetup.id })}
               >
                 Chat 💬
               </button>
@@ -323,7 +327,7 @@
             {#if userIsHost}
               <button
                 class="btn btn-success action-btn"
-                onclick={() => navigate({ name: "manage", meetup })}
+                onclick={() => navigate({ name: "manage", meetupId: meetup.id })}
               >
                 Duyệt 👥
                 {#if Array.isArray(meetup.pendingUids) && meetup.pendingUids.length > 0}

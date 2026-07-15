@@ -1,27 +1,27 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import { 
-    signInWithEmailAndPassword, 
-    createUserWithEmailAndPassword, 
-    signInWithPopup, 
-    signOut, 
+  import { onMount } from "svelte";
+  import {
+    signInWithEmailAndPassword,
+    createUserWithEmailAndPassword,
+    signInWithPopup,
+    signOut,
     onAuthStateChanged,
     getIdToken,
-    type User
-  } from 'firebase/auth';
-  import { auth, googleProvider } from './firebase';
+    type User,
+  } from "firebase/auth";
+  import { auth, googleProvider } from "./firebase";
 
   // Svelte 5 State Runes
   let user = $state<User | null>(null);
-  let idToken = $state<string>('');
+  let idToken = $state<string>("");
   let isLoginMode = $state<boolean>(true);
-  let email = $state<string>('');
-  let password = $state<string>('');
-  
+  let email = $state<string>("");
+  let password = $state<string>("");
+
   let isLoading = $state<boolean>(true);
   let isSubmitting = $state<boolean>(false);
-  let errorMessage = $state<string>('');
-  let successMessage = $state<string>('');
+  let errorMessage = $state<string>("");
+  let successMessage = $state<string>("");
   let isCopied = $state<boolean>(false);
 
   // Check if Firebase keys are placeholders
@@ -29,7 +29,7 @@
 
   onMount(() => {
     // Basic verification of API Key config
-    if (auth.config?.apiKey === 'PLACEHOLDER_API_KEY') {
+    if (auth.config?.apiKey === "PLACEHOLDER_API_KEY") {
       isConfigMissing = true;
     }
 
@@ -42,7 +42,7 @@
           console.error("Failed to get ID Token", err);
         }
       } else {
-        idToken = '';
+        idToken = "";
       }
       isLoading = false;
     });
@@ -53,21 +53,21 @@
   async function handleEmailAuth(e: Event) {
     e.preventDefault();
     if (!email || !password) {
-      errorMessage = 'Vui lòng nhập đầy đủ Email và Mật khẩu!';
+      errorMessage = "Vui lòng nhập đầy đủ Email và Mật khẩu!";
       return;
     }
 
-    errorMessage = '';
-    successMessage = '';
+    errorMessage = "";
+    successMessage = "";
     isSubmitting = true;
 
     try {
       if (isLoginMode) {
         await signInWithEmailAndPassword(auth, email, password);
-        successMessage = 'Đăng nhập thành công!';
+        successMessage = "Đăng nhập thành công!";
       } else {
         await createUserWithEmailAndPassword(auth, email, password);
-        successMessage = 'Đăng ký tài khoản thành công!';
+        successMessage = "Đăng ký tài khoản thành công!";
       }
     } catch (err: any) {
       console.error(err);
@@ -78,13 +78,13 @@
   }
 
   async function handleGoogleLogin() {
-    errorMessage = '';
-    successMessage = '';
+    errorMessage = "";
+    successMessage = "";
     isSubmitting = true;
 
     try {
       await signInWithPopup(auth, googleProvider);
-      successMessage = 'Đăng nhập Google thành công!';
+      successMessage = "Đăng nhập Google thành công!";
     } catch (err: any) {
       console.error(err);
       errorMessage = translateError(err.code || err.message);
@@ -94,13 +94,13 @@
   }
 
   async function handleSignOut() {
-    errorMessage = '';
-    successMessage = '';
+    errorMessage = "";
+    successMessage = "";
     try {
       await signOut(auth);
-      successMessage = 'Đã đăng xuất thành công.';
+      successMessage = "Đã đăng xuất thành công.";
     } catch (err: any) {
-      errorMessage = 'Lỗi đăng xuất: ' + err.message;
+      errorMessage = "Lỗi đăng xuất: " + err.message;
     }
   }
 
@@ -115,18 +115,18 @@
 
   function translateError(code: string): string {
     switch (code) {
-      case 'auth/invalid-credential':
-        return 'Email hoặc mật khẩu không chính xác!';
-      case 'auth/email-already-in-use':
-        return 'Email này đã được sử dụng cho một tài khoản khác!';
-      case 'auth/weak-password':
-        return 'Mật khẩu phải dài ít nhất 6 ký tự!';
-      case 'auth/invalid-email':
-        return 'Định dạng Email không hợp lệ!';
-      case 'auth/popup-closed-by-user':
-        return 'Cửa sổ đăng nhập Google đã bị đóng!';
+      case "auth/invalid-credential":
+        return "Email hoặc mật khẩu không chính xác!";
+      case "auth/email-already-in-use":
+        return "Email này đã được sử dụng cho một tài khoản khác!";
+      case "auth/weak-password":
+        return "Mật khẩu phải dài ít nhất 6 ký tự!";
+      case "auth/invalid-email":
+        return "Định dạng Email không hợp lệ!";
+      case "auth/popup-closed-by-user":
+        return "Cửa sổ đăng nhập Google đã bị đóng!";
       default:
-        return 'Có lỗi xảy ra: ' + code;
+        return "Có lỗi xảy ra: " + code;
     }
   }
 </script>
@@ -139,16 +139,28 @@
         <h3>Firebase Chưa Được Cấu Hình!</h3>
       </div>
       <p>
-        Bạn cần cập nhật cấu hình Firebase thật của mình bằng cách tạo file <code>.env</code> trong thư mục <code>frontend/</code> và thêm các khóa sau:
+        Bạn cần cập nhật cấu hình Firebase thật của mình bằng cách tạo file <code
+          >.env</code
+        >
+        trong thư mục <code>frontend/</code> và thêm các khóa sau:
       </p>
-      <pre><code>VITE_FIREBASE_API_KEY=YOUR_KEY
+      <pre><code
+          >VITE_FIREBASE_API_KEY=YOUR_KEY
 VITE_FIREBASE_AUTH_DOMAIN=YOUR_DOMAIN
 VITE_FIREBASE_PROJECT_ID=YOUR_PROJECT_ID
 VITE_FIREBASE_STORAGE_BUCKET=YOUR_BUCKET
 VITE_FIREBASE_MESSAGING_SENDER_ID=YOUR_SENDER_ID
-VITE_FIREBASE_APP_ID=YOUR_APP_ID</code></pre>
-      <p style="margin-top: 10px; font-size: 0.85rem; color: var(--text-muted);">
-        * Bạn có thể lấy các thông tin này bằng cách tạo Project trên <a href="https://console.firebase.google.com/" target="_blank" style="text-decoration: underline; font-weight: bold;">Firebase Console</a>.
+VITE_FIREBASE_APP_ID=YOUR_APP_ID</code
+        ></pre>
+      <p
+        style="margin-top: 10px; font-size: 0.85rem; color: var(--text-muted);"
+      >
+        * Bạn có thể lấy các thông tin này bằng cách tạo Project trên <a
+          href="https://console.firebase.google.com/"
+          target="_blank"
+          style="text-decoration: underline; font-weight: bold;"
+          >Firebase Console</a
+        >.
       </p>
     </div>
   {/if}
@@ -166,28 +178,16 @@ VITE_FIREBASE_APP_ID=YOUR_APP_ID</code></pre>
           <img src={user.photoURL} alt="Avatar" class="profile-avatar" />
         {:else}
           <div class="profile-avatar-placeholder">
-            {user.email ? user.email[0].toUpperCase() : 'U'}
+            {user.email ? user.email[0].toUpperCase() : "U"}
           </div>
         {/if}
         <div class="profile-info">
-          <h3>Chào mừng, {user.displayName || 'Thành viên'}!</h3>
+          <h3>Chào mừng, {user.displayName || "Thành viên"}!</h3>
           <p class="user-email">{user.email}</p>
         </div>
       </div>
 
       <!-- Token verification area -->
-      <div class="token-container">
-        <div class="token-title">
-          <span>Firebase JWT ID Token:</span>
-          <button class="btn btn-copy" onclick={copyToken}>
-            {isCopied ? 'Đã sao chép! ✓' : 'Sao chép'}
-          </button>
-        </div>
-        <textarea readonly class="token-textarea" value={idToken}></textarea>
-        <p class="token-tip">
-          💡 Bạn hãy sao chép Token này và sử dụng để xác thực các API yêu cầu đăng nhập trên Backend Go.
-        </p>
-      </div>
 
       <div class="auth-actions">
         <button class="btn btn-secondary" onclick={handleSignOut}>
@@ -199,10 +199,22 @@ VITE_FIREBASE_APP_ID=YOUR_APP_ID</code></pre>
     <!-- Login/Register Form -->
     <div class="cartoon-card auth-card">
       <div class="tabs-header">
-        <button class="tab-btn {isLoginMode ? 'active' : ''}" onclick={() => { isLoginMode = true; errorMessage = ''; }}>
+        <button
+          class="tab-btn {isLoginMode ? 'active' : ''}"
+          onclick={() => {
+            isLoginMode = true;
+            errorMessage = "";
+          }}
+        >
           Đăng nhập
         </button>
-        <button class="tab-btn {!isLoginMode ? 'active' : ''}" onclick={() => { isLoginMode = false; errorMessage = ''; }}>
+        <button
+          class="tab-btn {!isLoginMode ? 'active' : ''}"
+          onclick={() => {
+            isLoginMode = false;
+            errorMessage = "";
+          }}
+        >
           Đăng ký
         </button>
       </div>
@@ -221,30 +233,38 @@ VITE_FIREBASE_APP_ID=YOUR_APP_ID</code></pre>
 
         <div class="form-group">
           <label for="email">Địa chỉ Email:</label>
-          <input 
-            type="email" 
-            id="email" 
-            placeholder="example@gmail.com" 
+          <input
+            type="email"
+            id="email"
+            placeholder="example@gmail.com"
             bind:value={email}
             disabled={isSubmitting}
-            required 
+            required
           />
         </div>
 
         <div class="form-group">
           <label for="password">Mật khẩu:</label>
-          <input 
-            type="password" 
-            id="password" 
-            placeholder="••••••" 
+          <input
+            type="password"
+            id="password"
+            placeholder="••••••"
             bind:value={password}
             disabled={isSubmitting}
-            required 
+            required
           />
         </div>
 
-        <button type="submit" class="btn btn-primary w-full" disabled={isSubmitting}>
-          {isSubmitting ? 'Đang xử lý...' : (isLoginMode ? 'Đăng nhập ngay 🚀' : 'Đăng ký tài khoản 🎉')}
+        <button
+          type="submit"
+          class="btn btn-primary w-full"
+          disabled={isSubmitting}
+        >
+          {isSubmitting
+            ? "Đang xử lý..."
+            : isLoginMode
+              ? "Đăng nhập ngay 🚀"
+              : "Đăng ký tài khoản 🎉"}
         </button>
       </form>
 
@@ -252,12 +272,28 @@ VITE_FIREBASE_APP_ID=YOUR_APP_ID</code></pre>
         <span>Hoặc</span>
       </div>
 
-      <button class="btn btn-google w-full" onclick={handleGoogleLogin} disabled={isSubmitting}>
+      <button
+        class="btn btn-google w-full"
+        onclick={handleGoogleLogin}
+        disabled={isSubmitting}
+      >
         <svg class="google-icon" viewBox="0 0 24 24" width="20" height="20">
-          <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v3.92h6.69a5.74 5.74 0 0 1-2.48 3.77v3.08h3.99c2.34-2.15 3.69-5.32 3.69-8.7z"/>
-          <path fill="#34A853" d="M12 24c3.24 0 5.97-1.08 7.96-2.91l-3.99-3.08a7.12 7.12 0 0 1-3.97 1.13c-3.06 0-5.65-2.07-6.58-4.85H1.27v3.18A12 12 0 0 0 12 24z"/>
-          <path fill="#FBBC05" d="M5.42 14.29a7.15 7.15 0 0 1 0-4.58V6.53H1.27a12 12 0 0 0 0 10.94l4.15-3.18z"/>
-          <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42A11.92 11.92 0 0 0 12 0 12 12 0 0 0 1.27 6.53l4.15 3.18c.93-2.78 3.52-4.85 6.58-4.85z"/>
+          <path
+            fill="#4285F4"
+            d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v3.92h6.69a5.74 5.74 0 0 1-2.48 3.77v3.08h3.99c2.34-2.15 3.69-5.32 3.69-8.7z"
+          />
+          <path
+            fill="#34A853"
+            d="M12 24c3.24 0 5.97-1.08 7.96-2.91l-3.99-3.08a7.12 7.12 0 0 1-3.97 1.13c-3.06 0-5.65-2.07-6.58-4.85H1.27v3.18A12 12 0 0 0 12 24z"
+          />
+          <path
+            fill="#FBBC05"
+            d="M5.42 14.29a7.15 7.15 0 0 1 0-4.58V6.53H1.27a12 12 0 0 0 0 10.94l4.15-3.18z"
+          />
+          <path
+            fill="#EA4335"
+            d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42A11.92 11.92 0 0 0 12 0 12 12 0 0 0 1.27 6.53l4.15 3.18c.93-2.78 3.52-4.85 6.58-4.85z"
+          />
         </svg>
         Đăng nhập bằng Google
       </button>
@@ -476,8 +512,9 @@ VITE_FIREBASE_APP_ID=YOUR_APP_ID</code></pre>
     font-weight: 700;
   }
 
-  .divider::before, .divider::after {
-    content: '';
+  .divider::before,
+  .divider::after {
+    content: "";
     flex: 1;
     border-bottom: var(--border-width-sm) dashed var(--color-border);
   }
@@ -534,7 +571,11 @@ VITE_FIREBASE_APP_ID=YOUR_APP_ID</code></pre>
   }
 
   @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
   }
 </style>

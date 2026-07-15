@@ -1,19 +1,17 @@
 /**
- * Lightweight client-side router for Boardgame Luna SPA.
- * Uses Svelte 5 runes — no external libraries needed.
+ * Lightweight Hash-based client-side router for Boardgame Luna SPA.
+ * Uses Svelte 5 runes — fully synchronized with browser address bar.
  */
 
 export type RouteParams =
   | { name: 'find' }
+  | { name: 'my-meetups' }
   | { name: 'create' }
   | { name: 'profile' }
   | { name: 'filter' }
   | { name: 'map'; mode: 'discover' | 'select' }
-  | { name: 'chat'; meetup: any }
-  | { name: 'manage'; meetup: any };
-
-/** Main tabs (visible in bottom nav / desktop nav) */
-export const MAIN_TABS: RouteParams['name'][] = ['find', 'create', 'profile'];
+  | { name: 'chat'; meetupId: string }
+  | { name: 'manage'; meetupId: string };
 
 /** Routes that are "child" fullscreen pages — hide tab bar */
 export const CHILD_ROUTES: RouteParams['name'][] = ['filter', 'map', 'chat', 'manage'];
@@ -28,35 +26,108 @@ export function currentRoute(): RouteParams {
 }
 
 /**
- * Navigate to a new route.
- * Pushes current route to history stack before navigating.
+ * Parse hash string (e.g. "#/manage/123") into RouteParams object
+ */
+export function parseHash(hash: string): RouteParams {
+  const cleanHash = hash.startsWith('#') ? hash.slice(1) : hash;
+  if (!cleanHash || cleanHash === '/' || cleanHash === '/find') {
+    return { name: 'find' };
+  }
+  if (cleanHash === '/my-meetups') {
+    return { name: 'my-meetups' };
+  }
+  if (cleanHash === '/create') {
+    return { name: 'create' };
+  }
+  if (cleanHash === '/profile') {
+    return { name: 'profile' };
+  }
+  if (cleanHash === '/filter') {
+    return { name: 'filter' };
+  }
+  if (cleanHash === '/map/discover') {
+    return { name: 'map', mode: 'discover' };
+  }
+  if (cleanHash === '/map/select') {
+    return { name: 'map', mode: 'select' };
+  }
+
+  // Parse dynamic paths
+  const parts = cleanHash.split('/'); // e.g. ["", "manage", "123"]
+  if (parts.length >= 3) {
+    const routeName = parts[1];
+    const id = parts[2];
+    if (routeName === 'chat') {
+      return { name: 'chat', meetupId: id };
+    }
+    if (routeName === 'manage') {
+      return { name: 'manage', meetupId: id };
+    }
+  }
+
+  return { name: 'find' };
+}
+
+/**
+ * Build hash string from RouteParams object
+ */
+export function buildHash(route: RouteParams): string {
+  if (route.name === 'find') return '#/find';
+  if (route.name === 'my-meetups') return '#/my-meetups';
+  if (route.name === 'create') return '#/create';
+  if (route.name === 'profile') return '#/profile';
+  if (route.name === 'filter') return '#/filter';
+  if (route.name === 'map') return `#/map/${route.mode}`;
+  if (route.name === 'chat') return `#/chat/${route.meetupId}`;
+  if (route.name === 'manage') return `#/manage/${route.meetupId}`;
+  return '#/find';
+}
+
+/**
+ * Navigate to a new route by setting window hash.
  */
 export function navigate(to: RouteParams) {
+  const newHash = buildHash(to);
   _history.push(_route);
-  _route = to;
+  window.location.hash = newHash;
 }
 
 /**
  * Go back to the previous route.
- * If history is empty, falls back to 'find'.
  */
 export function goBack() {
   if (_history.length > 0) {
-    _route = _history.pop()!;
+    const prev = _history.pop()!;
+    window.location.hash = buildHash(prev);
   } else {
-    _route = { name: 'find' };
+    window.location.hash = '#/find';
   }
 }
 
-/**
- * Navigate to a main tab, clearing history.
- */
-export function navigateToTab(tab: 'find' | 'create' | 'profile') {
+export function navigateToTab(tab: 'find' | 'my-meetups' | 'create' | 'profile') {
   _history = [];
-  _route = { name: tab };
+  window.location.hash = `#/${tab}`;
 }
 
 /** True when current route is a child page (tab bar should be hidden) */
 export function isChildRoute(): boolean {
   return CHILD_ROUTES.includes(_route.name);
+}
+
+// ── Event Listener for Hash Change ───────────────────────────────────────────
+
+export function initRouter() {
+  const syncRoute = () => {
+    _route = parseHash(window.location.hash);
+  };
+
+  // Sync initially
+  syncRoute();
+
+  // Listen to browser back/forward and programmatic hash edits
+  window.addEventListener('hashchange', syncRoute);
+
+  return () => {
+    window.removeEventListener('hashchange', syncRoute);
+  };
 }

@@ -25,4 +25,6 @@ npm-debug.log*
 .idea
 .vercel
 .env*
-firebase-service-account.json
+# Firebase Service Accounts
+firebase-service-account*.json
+*-firebase-adminsdk-*.json

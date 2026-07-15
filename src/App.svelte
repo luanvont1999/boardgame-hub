@@ -8,6 +8,7 @@
     navigateToTab,
     isChildRoute,
     navigate,
+    initRouter,
     type RouteParams,
   } from "./lib/router.svelte";
   import { initNotifications } from "./lib/notificationService";
@@ -16,6 +17,7 @@
   import FindRoute from "./routes/FindRoute.svelte";
   import CreateRoute from "./routes/CreateRoute.svelte";
   import ProfileRoute from "./routes/ProfileRoute.svelte";
+  import MyMeetupsRoute from "./routes/MyMeetupsRoute.svelte";
   import MapRoute from "./routes/MapRoute.svelte";
   import FilterRoute from "./routes/FilterRoute.svelte";
   import ChatRoute from "./routes/ChatRoute.svelte";
@@ -252,50 +254,48 @@
   });
 
   function handleDeepLink(urlStr: string) {
+    if (urlStr.startsWith('#')) {
+      window.location.hash = urlStr;
+      return;
+    }
     try {
       const url = new URL(urlStr, window.location.origin);
       const routeParam = url.searchParams.get('route');
       if (routeParam === 'manage') {
         const meetupId = url.searchParams.get('meetupId');
-        if (meetupId && allMeetups.length > 0) {
-          const matchedMeetup = allMeetups.find(m => m.id === meetupId);
-          if (matchedMeetup) {
-            navigate({ name: 'manage', meetup: matchedMeetup });
-          }
+        if (meetupId) {
+          window.location.hash = `#/manage/${meetupId}`;
         }
       } else if (routeParam === 'profile') {
-        navigateToTab('profile');
+        window.location.hash = `#/profile`;
+      } else if (url.hash) {
+        window.location.hash = url.hash;
       }
     } catch (e) {
-      console.error("Lỗi parse deep link:", e);
+      if (urlStr.startsWith('/')) {
+        window.location.hash = `#${urlStr}`;
+      } else {
+        console.error("Lỗi parse deep link:", e);
+      }
     }
   }
 
-  $effect(() => {
-    if (allMeetups.length > 0) {
-      const params = new URLSearchParams(window.location.search);
-      const routeParam = params.get('route');
-      if (routeParam === 'manage') {
-        const meetupId = params.get('meetupId');
-        const matchedMeetup = allMeetups.find(m => m.id === meetupId);
-        if (matchedMeetup) {
-          window.history.replaceState({}, document.title, window.location.pathname);
-          navigate({ name: 'manage', meetup: matchedMeetup });
-        }
-      } else if (routeParam === 'profile') {
-        window.history.replaceState({}, document.title, window.location.pathname);
-        navigateToTab('profile');
-      }
-    }
-  });
-
   onMount(() => {
+    const cleanupRouter = initRouter();
     checkBackendHealth();
     listenToMeetupsRealtime();
 
     // Check PWA & iOS environment
     isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
     isStandalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone;
+
+    const bannerShown = localStorage.getItem('pwa_banner_shown');
+    if (bannerShown) {
+      showInstallBanner = false;
+    } else {
+      showInstallBanner = true;
+      localStorage.setItem('pwa_banner_shown', 'true');
+    }
 
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
@@ -362,6 +362,7 @@
 
     return () => {
       unsubAuth();
+      cleanupRouter();
     };
   });
 
@@ -435,6 +436,12 @@
       </li>
       <li>
         <button
+          class="nav-link {route.name === 'my-meetups' ? 'active' : ''}"
+          onclick={() => navigateToTab("my-meetups")}>Các kèo</button
+        >
+      </li>
+      <li>
+        <button
           class="nav-link {route.name === 'create' ? 'active' : ''}"
           onclick={() => navigateToTab("create")}
         >
@@ -498,7 +505,6 @@
     />
   {:else if route.name === "create"}
     <CreateRoute
-      meetups={allMeetups}
       bind:selectedLat={createLat}
       bind:selectedLng={createLng}
       bind:addressText={createAddressText}
@@ -507,12 +513,21 @@
     />
   {:else if route.name === "profile"}
     <ProfileRoute
-      {apiStatus}
-      {apiMessage}
-      {apiCode}
-      apiBase={API_BASE}
-      {isChecking}
-      onCheckHealth={checkBackendHealth}
+      {addToast}
+      {deferredPrompt}
+      {isIOS}
+      {isStandalone}
+      onTriggerInstall={triggerPWAInstall}
+    />
+  {:else if route.name === "my-meetups"}
+    <MyMeetupsRoute
+      meetups={allMeetups}
+      {userLat}
+      {userLng}
+      bind:selectedCity
+      bind:selectedDistance
+      {isTrackingGPS}
+      {gpsError}
       {addToast}
     />
   {:else if route.name === "map"}
@@ -533,9 +548,9 @@
       onApply={handleApplyFilter}
     />
   {:else if route.name === "chat"}
-    <ChatRoute meetup={route.meetup} />
+    <ChatRoute meetup={allMeetups.find(m => m.id === route.meetupId)} />
   {:else if route.name === "manage"}
-    <ManageRoute meetup={route.meetup} />
+    <ManageRoute meetup={allMeetups.find(m => m.id === route.meetupId)} />
   {/if}
 </main>
 
@@ -552,6 +567,44 @@
 <!-- ── Mobile Bottom Tab Bar (hidden for child routes) ──────────────────── -->
 {#if !childRoute}
   <nav class="mobile-nav-bar">
+    <button
+      class="mobile-nav-item {route.name === 'find' ? 'active' : ''}"
+      onclick={() => navigateToTab("find")}
+    >
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <circle cx="12" cy="12" r="10" />
+        <polygon
+          points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"
+        />
+      </svg>
+      <span>Tìm kèo</span>
+    </button>
+
+    <button
+      class="mobile-nav-item {route.name === 'my-meetups' ? 'active' : ''}"
+      onclick={() => navigateToTab("my-meetups")}
+    >
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" stroke-width="2.5" />
+        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" stroke-width="2.5" />
+      </svg>
+      <span>Các kèo</span>
+    </button>
+
     <button
       class="mobile-nav-item {route.name === 'create' ? 'active' : ''}"
       onclick={() => navigateToTab("create")}
@@ -573,26 +626,6 @@
         {/if}
       </div>
       <span>Lên kèo</span>
-    </button>
-
-    <button
-      class="mobile-nav-item {route.name === 'find' ? 'active' : ''}"
-      onclick={() => navigateToTab("find")}
-    >
-      <svg
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2.5"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-      >
-        <circle cx="12" cy="12" r="10" />
-        <polygon
-          points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"
-        />
-      </svg>
-      <span>Tìm kèo</span>
     </button>
 
     <button

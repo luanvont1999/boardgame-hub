@@ -3,7 +3,7 @@
   import { auth } from "../lib/firebase";
   import { onAuthStateChanged, type User } from "firebase/auth";
   import CreateMeetupForm from "../lib/CreateMeetupForm.svelte";
-  import MeetupList from "../lib/MeetupList.svelte";
+  import { navigateToTab } from "../lib/router.svelte";
 
   interface Props {
     meetups?: any[];
@@ -15,7 +15,6 @@
   }
 
   let {
-    meetups = [],
     selectedLat = $bindable(null),
     selectedLng = $bindable(null),
     addressText = $bindable(""),
@@ -24,7 +23,6 @@
   }: Props = $props();
 
   let currentUser = $state<User | null>(auth.currentUser);
-  let activeTab = $state<"new" | "active">("new");
 
   onMount(() => {
     const unsub = onAuthStateChanged(auth, (user) => {
@@ -33,59 +31,17 @@
     return unsub;
   });
 
-  // Kèo của tôi: do mình làm host, thành viên đã được duyệt, hoặc đang xin chờ duyệt (pending)
-  let myActiveMeetups = $derived(
-    meetups.filter((m) => {
-      if (!currentUser) return false;
-      const isHost =
-        m.hostUid === currentUser.uid || m.host_uid === currentUser.uid;
-      const approvedList = m.approvedUids || [];
-      const isMember = approvedList.includes(currentUser.uid);
-      const pendingList = m.pendingUids || [];
-      const isPending = pendingList.includes(currentUser.uid);
-      return isHost || isMember || isPending;
-    }),
-  );
-
-  // Số lượng yêu cầu đang chờ duyệt đối với các kèo do mình làm host
-  let pendingCount = $derived.by(() => {
-    const user = currentUser;
-    if (!user) return 0;
-    return meetups
-      .filter((m) => m.hostUid === user.uid || m.host_uid === user.uid)
-      .reduce((sum, m) => sum + (Array.isArray(m.pendingUids) ? m.pendingUids.length : 0), 0);
-  });
-
   function handleCreateSuccess() {
     selectedLat = null;
     selectedLng = null;
     addressText = "";
-    // Switch to active meetups tab to show user their newly created meetup
-    activeTab = "active";
+    // Chuyển hướng người dùng sang tab "Các Kèo" sau khi tạo thành công để xem danh sách
+    navigateToTab("my-meetups");
   }
 </script>
 
 <section id="create-route" style="padding-bottom: 80px;">
-  <!-- Tab selectors -->
-  <div class="create-tabs">
-    <button
-      class="create-tab-btn {activeTab === 'new' ? 'active' : ''}"
-      onclick={() => (activeTab = "new")}
-    >
-      ✨ Tạo kèo mới
-    </button>
-    <button
-      class="create-tab-btn {activeTab === 'active' ? 'active' : ''}"
-      onclick={() => (activeTab = "active")}
-    >
-      🔥 Kèo đang hoạt động ({myActiveMeetups.length})
-      {#if pendingCount > 0}
-        <span class="tab-pending-badge">{pendingCount} chờ duyệt</span>
-      {/if}
-    </button>
-  </div>
-
-  {#if activeTab === "new"}
+  {#if currentUser}
     <CreateMeetupForm
       bind:selectedLat
       bind:selectedLng
@@ -94,94 +50,24 @@
       {userLng}
       onCreateSuccess={handleCreateSuccess}
     />
-  {:else if !currentUser}
-    <div class="empty-state">
-      <p>
-        🔒 Vui lòng đăng nhập ở tab <strong>Hồ sơ</strong> để xem các kèo bạn đang
-        tham gia hoặc chủ trì.
-      </p>
-    </div>
-  {:else if myActiveMeetups.length === 0}
-    <div class="empty-state">
-      <p>Bạn chưa chủ trì hay tham gia kèo nào đang hoạt động cả.</p>
-      <button
-        class="btn btn-primary"
-        onclick={() => (activeTab = "new")}
-        style="margin-top: 12px;"
-      >
-        Tạo kèo đầu tiên ngay!
-      </button>
-    </div>
   {:else}
-    <MeetupList
-      meetups={myActiveMeetups}
-      {userLat}
-      {userLng}
-      selectedCity="all"
-      selectedDistance="all"
-      isTrackingGPS={false}
-      gpsError={false}
-    />
+    <!-- Unauthorized warning -->
+    <div class="cartoon-card" style="padding: 40px; background-color: #fffefb; text-align: center; margin-top: 20px;">
+      <span style="font-size: 3rem; display: block; margin-bottom: 16px;">🔒</span>
+      <h4 style="font-size: 1.3rem; font-weight: 700; margin-bottom: 8px; color: var(--text-dark);">Cần Đăng Nhập Tài Khoản</h4>
+      <p style="font-size: 0.95rem; font-weight: 500; color: var(--text-muted); max-width: 360px; margin: 0 auto 24px auto; line-height: 1.5;">
+        Bạn cần đăng nhập tài khoản trước khi có thể tự thiết lập và lên kèo chơi boardgame mới nhé!
+      </p>
+      <a 
+        href="#/profile" 
+        class="btn btn-primary"
+        style="display: inline-block; padding: 12px 28px; font-size: 0.95rem; font-weight: 800; border: 3px solid #1e1e24; border-radius: 8px; background-color: var(--pastel-yellow, #ffe869) !important; color: #1e1e24 !important; box-shadow: 4px 4px 0px #1e1e24; text-decoration: none;"
+      >
+        Đi tới trang Đăng nhập 🔑
+      </a>
+    </div>
   {/if}
 </section>
 
 <style>
-  .create-tabs {
-    display: flex;
-    gap: 12px;
-    margin-bottom: 24px;
-  }
-  .create-tab-btn {
-    flex: 1;
-    padding: 12px 8px;
-    font-size: 1.05rem;
-    font-weight: 700;
-    background-color: #fffdfb;
-    border: 3px solid #1e1e24;
-    box-shadow: 4px 4px 0px #1e1e24;
-    border-radius: 8px;
-    cursor: pointer;
-    font-family: "Quicksand", sans-serif;
-    transition: all 0.1s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-  }
-  .create-tab-btn.active {
-    background-color: var(--pastel-yellow, #ffe869);
-    box-shadow: 1px 1px 0px #1e1e24;
-    transform: translate(3px, 3px);
-  }
-  .create-tab-btn:hover:not(.active) {
-    background-color: var(--pastel-blue, #a4f0fd);
-    transform: translate(-1px, -1px);
-    box-shadow: 5px 5px 0px #1e1e24;
-  }
-  .create-tab-btn:active:not(.active) {
-    transform: translate(2px, 2px);
-    box-shadow: 2px 2px 0px #1e1e24;
-  }
-  .empty-state {
-    padding: 40px 20px;
-    text-align: center;
-    background-color: #fffdfb;
-    border: 3px solid #1e1e24;
-    box-shadow: 5px 5px 0px #1e1e24;
-    border-radius: 12px;
-    font-size: 1.1rem;
-    font-weight: 600;
-  }
-  .tab-pending-badge {
-    background-color: #ef4444;
-    color: white;
-    font-size: 0.75rem;
-    font-weight: 800;
-    padding: 2px 6px;
-    border-radius: 8px;
-    border: 1.5px solid #1e1e24;
-    box-shadow: 1px 1px 0px #1e1e24;
-    margin-left: 4px;
-    display: inline-block;
-  }
 </style>
