@@ -24,18 +24,41 @@
     onCreateSuccess,
   }: Props = $props();
 
-  // State variables (Svelte 5 runes)
+  // State variables (Svelte 5 runes) with draft recovery
   let user = $state<User | null>(null);
-  let title = $state<string>("");
-  let game = $state<string>("");
-  let time = $state<string>(""); // datetime-local format
+  let title = $state<string>(localStorage.getItem("draft_meetup_title") || "");
+  let game = $state<string>(localStorage.getItem("draft_meetup_game") || "");
+  let time = $state<string>(localStorage.getItem("draft_meetup_time") || ""); // datetime-local format
   let lat = $state<number | null>(null);
   let lng = $state<number | null>(null);
 
   // New detailed fields
-  let playersNeeded = $state<number>(4);
-  let estimatedDuration = $state<string>("2 - 3 tiếng");
-  let notes = $state<string>("");
+  let playersNeeded = $state<number>(
+    Number(localStorage.getItem("draft_meetup_playersNeeded")) || 4
+  );
+  let estimatedDuration = $state<string>(
+    localStorage.getItem("draft_meetup_estimatedDuration") || "2 - 3 tiếng"
+  );
+  let notes = $state<string>(localStorage.getItem("draft_meetup_notes") || "");
+
+  // Auto-save form drafts to localStorage
+  $effect(() => {
+    localStorage.setItem("draft_meetup_title", title);
+    localStorage.setItem("draft_meetup_game", game);
+    localStorage.setItem("draft_meetup_time", time);
+    localStorage.setItem("draft_meetup_playersNeeded", String(playersNeeded));
+    localStorage.setItem("draft_meetup_estimatedDuration", estimatedDuration);
+    localStorage.setItem("draft_meetup_notes", notes);
+  });
+
+  function clearDraft() {
+    localStorage.removeItem("draft_meetup_title");
+    localStorage.removeItem("draft_meetup_game");
+    localStorage.removeItem("draft_meetup_time");
+    localStorage.removeItem("draft_meetup_playersNeeded");
+    localStorage.removeItem("draft_meetup_estimatedDuration");
+    localStorage.removeItem("draft_meetup_notes");
+  }
 
   // Address Geocoding states
   let suggestions = $state<any[]>([]);
@@ -235,6 +258,8 @@
       lng = null;
       selectedLat = null;
       selectedLng = null;
+
+      clearDraft();
 
       onCreateSuccess();
     } catch (err: any) {
