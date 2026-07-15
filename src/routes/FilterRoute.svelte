@@ -28,7 +28,6 @@
     tempDistance = selectedDistance;
   });
 
-
   function handleApply() {
     onApply(tempCity, tempDistance);
     goBack();
@@ -42,87 +41,87 @@
       ← Quay lại
     </button>
     <div class="nav-title-group">
-      <h2><Icon name="filter" size={22} class="inline-icon" /> Tùy Chỉnh Bộ Lọc Tìm Kiếm</h2>
-      <span class="sub-title">Lọc kèo chơi theo thành phố và bán kính vị trí</span>
+      <h2><Icon name="filter" size={20} /> Tùy Chỉnh Bộ Lọc Tìm Kiếm</h2>
+      <span class="sub-title">Chọn khu vực thành phố và bán kính vị trí</span>
     </div>
   </div>
 
-  <!-- Body Content -->
+  <!-- Compact Body Content -->
   <div class="cartoon-card filter-content-card">
-    <!-- City Selection -->
+    <!-- City Selection Row -->
     <div class="filter-section">
       <h3 class="section-title-label">
-        <Icon name="city" size={20} class="inline-icon" /> Chọn Khu Vực Thành Phố:
+        <Icon name="building" size={16} /> Khu Vực:
       </h3>
-      <div class="options-grid">
+      <div class="options-row">
         <button 
           type="button" 
-          class="option-card-btn {tempCity === 'all' ? 'active' : ''}"
+          class="option-chip-btn {tempCity === 'all' ? 'active' : ''}"
           onclick={() => tempCity = 'all'}
         >
-          <span class="option-icon"><Icon name="map" size={32} /></span>
-          <span class="option-name">Tất Cả Thành Phố</span>
+          <Icon name="map" size={15} />
+          <span>Tất Cả</span>
         </button>
 
         <button 
           type="button" 
-          class="option-card-btn {tempCity === 'HCM' ? 'active' : ''}"
+          class="option-chip-btn {tempCity === 'HCM' ? 'active' : ''}"
           onclick={() => tempCity = 'HCM'}
         >
-          <span class="option-icon"><Icon name="building" size={32} /></span>
-          <span class="option-name">TP. Hồ Chí Minh</span>
+          <Icon name="building" size={15} />
+          <span>Hồ Chí Minh</span>
         </button>
 
         <button 
           type="button" 
-          class="option-card-btn {tempCity === 'HN' ? 'active' : ''}"
+          class="option-chip-btn {tempCity === 'HN' ? 'active' : ''}"
           onclick={() => tempCity = 'HN'}
         >
-          <span class="option-icon"><Icon name="landmark" size={32} /></span>
-          <span class="option-name">Hà Nội</span>
+          <Icon name="landmark" size={15} />
+          <span>Hà Nội</span>
         </button>
       </div>
     </div>
 
-    <!-- Distance Selection -->
-    <div class="filter-section" style="margin-top: 32px;">
+    <!-- Distance Selection Row -->
+    <div class="filter-section" style="margin-top: 20px;">
       <h3 class="section-title-label">
-        <Icon name="gps" size={20} class="inline-icon" /> Chọn Khoảng Cách Vị Trí (GPS):
+        <Icon name="gps" size={16} /> Bán Kính (GPS):
       </h3>
-      <div class="options-grid">
+      <div class="options-row">
         <button 
           type="button" 
-          class="option-card-btn {tempDistance === 'all' ? 'active' : ''}"
+          class="option-chip-btn {tempDistance === 'all' ? 'active' : ''}"
           onclick={() => tempDistance = 'all'}
         >
-          <span class="option-icon"><Icon name="pin" size={32} /></span>
-          <span class="option-name">Mọi Khoảng Cách</span>
+          <Icon name="pin" size={15} />
+          <span>Tất Cả</span>
         </button>
 
         <button 
           type="button" 
-          class="option-card-btn {tempDistance === '5' ? 'active' : ''}"
+          class="option-chip-btn {tempDistance === '5' ? 'active' : ''}"
           disabled={userLat === null}
           onclick={() => tempDistance = '5'}
         >
-          <span class="option-icon"><Icon name="zap" size={32} /></span>
-          <span class="option-name">Dưới 5 km</span>
+          <Icon name="zap" size={15} />
+          <span>&lt; 5 km</span>
         </button>
 
         <button 
           type="button" 
-          class="option-card-btn {tempDistance === '10' ? 'active' : ''}"
+          class="option-chip-btn {tempDistance === '10' ? 'active' : ''}"
           disabled={userLat === null}
           onclick={() => tempDistance = '10'}
         >
-          <span class="option-icon"><Icon name="rocket" size={32} /></span>
-          <span class="option-name">Dưới 10 km</span>
+          <Icon name="rocket" size={15} />
+          <span>&lt; 10 km</span>
         </button>
       </div>
 
       {#if userLat === null}
         <p class="gps-warning-hint">
-          <Icon name="alert-triangle" size={16} class="inline-icon" /> Vui lòng cho phép quyền vị trí (GPS) để bật lọc khoảng cách theo km.
+          <Icon name="alert-triangle" size={14} /> Cần bật vị trí (GPS) để xem bán kính theo km.
         </p>
       {/if}
     </div>
@@ -134,16 +133,16 @@
         <span class="gps-text">Đang lấy vị trí GPS...</span>
       {:else if userLat !== null}
         <span class="gps-dot success"></span>
-        <span class="gps-text">Đã bật định vị GPS thành công</span>
+        <span class="gps-text">Đã định vị thành công</span>
       {:else if gpsError}
         <span class="gps-dot warning"></span>
-        <span class="gps-text">GPS bị từ chối hoặc thiết bị không hỗ trợ.</span>
+        <span class="gps-text">Chưa bật định vị GPS</span>
       {/if}
     </div>
 
     <div class="apply-action-bar">
       <button type="button" class="btn btn-primary btn-apply-full" onclick={handleApply}>
-        <Icon name="check-circle" size={20} class="inline-icon" /> Áp dụng bộ lọc & Xem kết quả
+        <Icon name="check-circle" size={18} /> Áp Dụng Bộ Lọc
       </button>
     </div>
   </div>
@@ -154,140 +153,133 @@
     width: 100%;
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 16px;
     padding-bottom: 40px;
+    max-width: 580px;
+    margin: 0 auto;
   }
 
   .route-top-nav {
     background-color: var(--pastel-yellow);
     display: flex;
     align-items: center;
-    gap: 16px;
-    padding: 16px 24px;
+    gap: 12px;
+    padding: 12px 16px;
     border-radius: var(--radius-lg);
-    box-shadow: 4px 4px 0 var(--color-border);
+    box-shadow: 3px 3px 0 var(--color-border);
     text-align: left;
   }
 
   .back-btn {
-    padding: 8px 16px !important;
-    font-size: 0.95rem !important;
+    padding: 6px 12px !important;
+    font-size: 0.88rem !important;
     white-space: nowrap;
   }
 
   .nav-title-group h2 {
-    font-size: 1.3rem;
+    font-size: 1.1rem;
     font-weight: 800;
     margin: 0;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
   }
 
   .sub-title {
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     font-weight: 600;
     color: var(--text-dark);
   }
 
   .filter-content-card {
     background-color: #fffefb;
-    padding: 32px 24px;
+    padding: 24px 20px;
     text-align: left;
   }
 
   .section-title-label {
-    font-size: 1.1rem;
+    font-size: 0.95rem;
     font-weight: 800;
-    margin-bottom: 16px;
+    margin-bottom: 10px;
     color: var(--text-dark);
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
   }
 
-  .options-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 16px;
-  }
-
-  .option-card-btn {
+  /* Compact Horizontal Options Row */
+  .options-row {
     display: flex;
-    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .option-chip-btn {
+    flex: 1;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 10px;
-    padding: 20px 16px;
+    gap: 6px;
+    padding: 10px 8px;
     border-radius: var(--radius-md);
     border: var(--border-width) solid var(--color-border);
     background-color: #fff;
     cursor: pointer;
-    box-shadow: 4px 4px 0 var(--color-border);
+    box-shadow: 2.5px 2.5px 0 var(--color-border);
     font-family: var(--font-family);
-    transition: all 0.15s ease;
+    font-size: 0.88rem;
+    font-weight: 800;
+    white-space: nowrap;
+    transition: all 0.1s ease;
   }
 
-  .option-card-btn:hover:not(:disabled) {
-    transform: translate(-2px, -2px);
-    box-shadow: 6px 6px 0 var(--color-border);
-  }
-
-  .option-card-btn:active:not(:disabled) {
-    transform: translate(2px, 2px);
-    box-shadow: 0 0 0 var(--color-border);
-  }
-
-  .option-card-btn.active {
-    background-color: var(--pastel-yellow);
-    box-shadow: 5px 5px 0 var(--color-border);
+  .option-chip-btn:hover:not(:disabled) {
     transform: translate(-1px, -1px);
+    box-shadow: 3.5px 3.5px 0 var(--color-border);
   }
 
-  .option-card-btn:disabled {
+  .option-chip-btn:active:not(:disabled) {
+    transform: translate(1px, 1px);
+    box-shadow: 1px 1px 0 var(--color-border);
+  }
+
+  .option-chip-btn.active {
+    background-color: var(--pastel-yellow);
+    box-shadow: 2.5px 2.5px 0 var(--color-border);
+  }
+
+  .option-chip-btn:disabled {
     background-color: #f3f4f6;
     color: #9ca3af;
     border-color: #d1d5db;
     cursor: not-allowed;
-    box-shadow: 2px 2px 0 #d1d5db;
-  }
-
-  .option-icon {
-    font-size: 2.2rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .option-name {
-    font-size: 1rem;
-    font-weight: 800;
+    box-shadow: 1.5px 1.5px 0 #d1d5db;
   }
 
   .gps-warning-hint {
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     font-weight: 700;
     color: #dc2626;
-    margin-top: 10px;
+    margin-top: 8px;
     display: flex;
     align-items: center;
     gap: 6px;
   }
 
   .gps-status-pill {
-    margin-top: 24px;
-    padding: 12px 16px;
+    margin-top: 20px;
+    padding: 10px 14px;
     background-color: var(--bg-secondary);
     border: var(--border-width-sm) solid var(--color-border);
     border-radius: var(--radius-md);
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
   }
 
   .gps-dot {
-    width: 10px;
-    height: 10px;
+    width: 8px;
+    height: 8px;
     border-radius: 50%;
     border: 1px solid var(--color-border);
   }
@@ -297,22 +289,22 @@
   .gps-dot.warning { background-color: #ef4444; }
 
   .gps-text {
-    font-size: 0.88rem;
+    font-size: 0.82rem;
     font-weight: 700;
     color: var(--text-dark);
   }
 
   .apply-action-bar {
-    margin-top: 32px;
+    margin-top: 20px;
   }
 
   .btn-apply-full {
     width: 100%;
-    padding: 16px !important;
-    font-size: 1.1rem !important;
+    padding: 12px !important;
+    font-size: 0.98rem !important;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: 6px;
   }
 </style>

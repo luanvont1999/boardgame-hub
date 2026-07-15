@@ -129,7 +129,7 @@
         <div class="host-summary-pill">
           <span><Icon name="crown" size={15} class="inline-icon" /> Host kèo: <strong>{meetup.hostName || meetup.host_name || 'Ẩn danh'}</strong></span>
           <span class="count-tag">
-            <Icon name="users" size={13} class="inline-icon" /> {meetup.playersCount || meetup.players_count || 1} / {meetup.playersNeeded || meetup.players_needed || 4}
+            <Icon name="users" size={13} class="inline-icon" /> {1 + approvedRequests.length} / {meetup.playersNeeded || meetup.players_needed || 4}
           </span>
         </div>
 

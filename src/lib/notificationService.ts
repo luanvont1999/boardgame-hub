@@ -1,4 +1,4 @@
-import { doc, setDoc, collection, getDocs } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, getDocs } from 'firebase/firestore';
 import { getToken, onMessage } from 'firebase/messaging';
 import { db, messaging } from './firebase';
 
@@ -120,5 +120,54 @@ export async function broadcastPushNotifications(title: string, body: string, cl
   } catch (err: any) {
     console.error('[FCM Broadcast Error]:', err);
     return { success: false, message: 'Lỗi gửi broadcast: ' + err.message };
+  }
+}
+
+/**
+ * Gửi thông báo đẩy tới tất cả các thành viên tham gia trong kèo khi có tin nhắn mới.
+ */
+export async function notifyMeetupChatMembers(
+  meetupTitle: string,
+  allMemberUids: string[],
+  senderUid: string,
+  senderName: string,
+  messageText: string
+) {
+  try {
+    const targetUids = Array.from(new Set(allMemberUids)).filter((uid) => uid && uid !== senderUid);
+    if (targetUids.length === 0) return;
+
+    const tokenPromises = targetUids.map(async (uid) => {
+      try {
+        const userDoc = await getDoc(doc(db, 'users', uid));
+        if (userDoc.exists() && userDoc.data()?.fcmToken) {
+          return userDoc.data().fcmToken as string;
+        }
+      } catch (e) {
+        console.warn(`[FCM Chat] Failed to fetch token for user ${uid}:`, e);
+      }
+      return null;
+    });
+
+    const tokens = (await Promise.all(tokenPromises)).filter((t): t is string => Boolean(t));
+    if (tokens.length === 0) return;
+
+    const API_BASE = import.meta.env.VITE_API_URL || '';
+    const title = `💬 [${meetupTitle}] ${senderName}`;
+    const body = messageText.length > 80 ? messageText.substring(0, 80) + '...' : messageText;
+
+    await fetch(`${API_BASE}/api/send-notification`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fcmTokens: tokens,
+        title,
+        body,
+        clickAction: window.location.origin
+      })
+    });
+    console.log(`[FCM Chat Notification] Sent notification to ${tokens.length} members.`);
+  } catch (err) {
+    console.error('[FCM Chat Notification Error]:', err);
   }
 }

@@ -207,34 +207,17 @@
   {#if showFilterBar}
     <div class="cartoon-card filter-trigger-card">
       <div class="filter-trigger-info">
-        <div class="filter-trigger-header">
-          <Icon name="dice" size={24} class="filter-title-icon" />
-          <h3>Danh Sách Kèo Chơi Boardgame</h3>
-        </div>
-
-        <!-- Active Filter Badges -->
-        <div class="active-filter-badges">
-          <span class="badge-chip">
-            <Icon name="pin" size={14} /> Khu vực: <strong
-              >{selectedCity === "all"
-                ? "Tất cả"
-                : selectedCity === "HCM"
-                  ? "TP. HCM"
-                  : "Hà Nội"}</strong
-            >
-          </span>
-          <span class="badge-chip">
-            <Icon name="distance" size={14} /> Khoảng cách: <strong
-              >{selectedDistance === "all"
-                ? "Mọi khoảng cách"
-                : `< ${selectedDistance} km`}</strong
-            >
-          </span>
+        <div class="filter-summary-row">
           {#if userLat !== null}
-            <span class="badge-chip gps-on-chip">
-              <Icon name="gps" size={14} /> GPS Bật
-            </span>
+            <span class="gps-green-dot" title="Đã bật định vị GPS"></span>
           {/if}
+          <span class="filter-summary-text">
+            {selectedCity === "all"
+              ? "Tất cả khu vực"
+              : selectedCity === "HCM"
+                ? "Hồ Chí Minh"
+                : "Hà Nội"}{selectedDistance !== "all" ? ` < ${selectedDistance}km` : ""}
+          </span>
         </div>
       </div>
 
@@ -243,8 +226,8 @@
         class="btn btn-primary filter-trigger-btn"
         onclick={openFilter}
       >
-        <Icon name="search" size={16} />
-        <span>Bộ Lọc Tìm Kiếm</span>
+        <Icon name="search" size={15} />
+        <span>Bộ Lọc</span>
       </button>
     </div>
   {/if}
@@ -501,49 +484,46 @@
     }
   }
 
-  .filter-trigger-info {
+  .filter-trigger-card {
+    padding: 10px 16px;
+    background-color: #fffefb;
     display: flex;
-    flex-direction: column;
-    gap: 8px;
-    text-align: left;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
   }
 
-  .filter-trigger-header {
+  .filter-trigger-info {
+    display: flex;
+    align-items: center;
+  }
+
+  .filter-summary-row {
     display: flex;
     align-items: center;
     gap: 8px;
-  }
-
-  .filter-trigger-header h3 {
-    font-size: 1.3rem;
+    font-size: 0.95rem;
     font-weight: 800;
-  }
-
-  .active-filter-badges {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  .badge-chip {
-    font-size: 0.85rem;
-    font-weight: 600;
-    padding: 4px 12px;
-    background-color: var(--bg-secondary);
-    border: var(--border-width-sm) solid var(--color-border);
-    border-radius: 100px;
     color: var(--text-dark);
-    box-shadow: 1.5px 1.5px 0 var(--color-border);
   }
 
-  .gps-on-chip {
-    background-color: var(--pastel-green);
+  .gps-green-dot {
+    width: 10px;
+    height: 10px;
+    background-color: #10b981;
+    border-radius: 50%;
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.8);
+    display: inline-block;
+    flex-shrink: 0;
   }
 
   .filter-trigger-btn {
-    font-size: 1rem;
-    padding: 10px 20px;
+    font-size: 0.88rem !important;
+    padding: 6px 14px !important;
     white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
   }
 
   /* Cards Grid */

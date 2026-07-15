@@ -20,6 +20,7 @@
     subscribeToMeetupRequests,
     type MeetupRequest
   } from './meetupService';
+  import { notifyMeetupChatMembers } from './notificationService';
 
   interface Meetup {
     id: string;
@@ -126,6 +127,20 @@
         senderName,
         createdAt: serverTimestamp()
       });
+
+      const allMembers = [
+        ...(meetup.approvedUids || []),
+        meetup.hostUid || meetup.host_uid || ''
+      ].filter(Boolean);
+
+      // Trigger push notification to other participating members asynchronously
+      notifyMeetupChatMembers(
+        meetup.title,
+        allMembers,
+        currentUser.uid,
+        senderName,
+        text
+      );
     } catch (err) {
       console.error('[Firestore Chat] Send error:', err);
     } finally {

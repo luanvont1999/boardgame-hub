@@ -33,7 +33,6 @@
   let lng = $state<number | null>(null);
 
   // New detailed fields
-  let playersCount = $state<number>(1);
   let playersNeeded = $state<number>(4);
   let estimatedDuration = $state<string>("2 - 3 tiếng");
   let notes = $state<string>("");
@@ -209,7 +208,7 @@
         hostFcmToken,
         lat,
         lng,
-        playersCount: Number(playersCount) || 1,
+        playersCount: 1,
         playersNeeded: Number(playersNeeded) || 4,
         approvedUids: [user.uid],
         time,
@@ -228,7 +227,6 @@
       title = "";
       game = "";
       time = "";
-      playersCount = 1;
       playersNeeded = 4;
       estimatedDuration = "2 - 3 tiếng";
       notes = "";
@@ -325,21 +323,7 @@
         <!-- Group Short Inputs in 1 compact row -->
         <div class="form-group-row short-inputs-row">
           <div class="form-group short-field">
-            <label for="players-count">Hiện Có:</label>
-            <input
-              type="number"
-              id="players-count"
-              min="1"
-              max="20"
-              placeholder="1"
-              bind:value={playersCount}
-              disabled={isSubmitting}
-              required
-            />
-          </div>
-
-          <div class="form-group short-field">
-            <label for="players-needed">Tổng Sĩ Số:</label>
+            <label for="players-needed">Số người:</label>
             <input
               type="number"
               id="players-needed"
@@ -353,7 +337,7 @@
           </div>
 
           <div class="form-group duration-field">
-            <label for="meetup-duration">Dự Kiến Chơi:</label>
+            <label for="meetup-duration">Thời gian:</label>
             <select
               id="meetup-duration"
               bind:value={estimatedDuration}
@@ -479,20 +463,16 @@
   }
 
   .duration-field {
-    flex: 1.5;
+    flex: 1;
     min-width: 0;
   }
 
-  @media (max-width: 440px) {
-    .short-inputs-row {
-      flex-wrap: wrap;
-    }
-    .short-field {
-      flex: 1 1 calc(50% - 6px);
-    }
-    .duration-field {
-      flex: 1 1 100%;
-    }
+  .short-inputs-row {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    gap: 8px !important;
+    width: 100%;
   }
 
   .form-group label {

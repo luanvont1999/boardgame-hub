@@ -127,7 +127,7 @@
           <Icon name="dice" size={16} class="inline-icon" /> Game: <strong>{meetup.game}</strong>
         </span>
         <span class="player-count-badge">
-          <Icon name="users" size={16} class="inline-icon" /> Sĩ số: <strong>{meetup.playersCount || meetup.players_count || 1} / {meetup.playersNeeded || meetup.players_needed || 4} người</strong>
+          <Icon name="users" size={16} class="inline-icon" /> Sĩ số: <strong>{1 + approvedRequests.length} / {meetup.playersNeeded || meetup.players_needed || 4} người</strong>
         </span>
       </div>
 
