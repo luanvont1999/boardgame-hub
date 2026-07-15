@@ -9,7 +9,7 @@ export type RouteParams =
   | { name: 'create' }
   | { name: 'profile' }
   | { name: 'filter' }
-  | { name: 'map'; mode: 'discover' | 'select' }
+  | { name: 'map'; mode: 'discover' | 'select'; meetupId?: string }
   | { name: 'chat'; meetupId: string }
   | { name: 'manage'; meetupId: string };
 
@@ -52,16 +52,21 @@ export function parseHash(hash: string): RouteParams {
     return { name: 'map', mode: 'select' };
   }
 
-  // Parse dynamic paths
-  const parts = cleanHash.split('/'); // e.g. ["", "manage", "123"]
+  // Parse dynamic paths (e.g. ["", "map", "discover", "123"] or ["", "chat", "123"])
+  const parts = cleanHash.split('/');
   if (parts.length >= 3) {
     const routeName = parts[1];
-    const id = parts[2];
+    const subParam = parts[2];
+    if (routeName === 'map') {
+      const mode = (subParam === 'select' ? 'select' : 'discover') as 'discover' | 'select';
+      const meetupId = parts[3];
+      return { name: 'map', mode, meetupId };
+    }
     if (routeName === 'chat') {
-      return { name: 'chat', meetupId: id };
+      return { name: 'chat', meetupId: subParam };
     }
     if (routeName === 'manage') {
-      return { name: 'manage', meetupId: id };
+      return { name: 'manage', meetupId: subParam };
     }
   }
 
@@ -77,7 +82,9 @@ export function buildHash(route: RouteParams): string {
   if (route.name === 'create') return '#/create';
   if (route.name === 'profile') return '#/profile';
   if (route.name === 'filter') return '#/filter';
-  if (route.name === 'map') return `#/map/${route.mode}`;
+  if (route.name === 'map') {
+    return route.meetupId ? `#/map/${route.mode}/${route.meetupId}` : `#/map/${route.mode}`;
+  }
   if (route.name === 'chat') return `#/chat/${route.meetupId}`;
   if (route.name === 'manage') return `#/manage/${route.meetupId}`;
   return '#/find';

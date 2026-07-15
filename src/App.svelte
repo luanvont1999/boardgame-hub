@@ -544,6 +544,9 @@
       bind:selectedLng={createLng}
       bind:addressText={createAddressText}
       mode={route.mode}
+      meetupId={route.name === "map" ? route.meetupId : undefined}
+      {userLat}
+      {userLng}
     />
   {:else if route.name === "filter"}
     <FilterRoute

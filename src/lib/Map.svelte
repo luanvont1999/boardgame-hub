@@ -20,18 +20,30 @@
     color: string;
   }
 
+  interface PresetVenue {
+    name: string;
+    address: string;
+    lat: number;
+    lng: number;
+    distance?: number | null;
+  }
+
   // Svelte 5 Props
   interface Props {
     meetups: Meetup[];
+    presetVenues?: PresetVenue[];
     selectedLat: number | null;
     selectedLng: number | null;
+    mode?: "discover" | "select";
     isSelectingLocation?: boolean;
     onLocationSelect?: (lng: number, lat: number) => void;
   }
   let {
     meetups,
+    presetVenues = [],
     selectedLat,
     selectedLng,
+    mode = "discover",
     isSelectingLocation = false,
     onLocationSelect,
   }: Props = $props();
@@ -62,6 +74,62 @@
     const map = mapInstance;
     if (!map) return;
     clearMarkers();
+
+    if (mode === "select" && presetVenues.length > 0) {
+      presetVenues.forEach((venue, index) => {
+        const el = document.createElement("div");
+        el.className = "custom-venue-marker";
+        el.style.backgroundColor = "#ffe869"; // pastel yellow
+        el.style.border = "2px solid #1e1e24";
+        el.style.boxShadow = "2.5px 2.5px 0 #1e1e24";
+        el.style.borderRadius = "50%";
+        el.style.width = "30px";
+        el.style.height = "30px";
+        el.style.display = "flex";
+        el.style.alignItems = "center";
+        el.style.justifyContent = "center";
+        el.style.cursor = "pointer";
+
+        el.innerHTML = `
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#1e1e24" stroke-width="2.2">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+            <polyline points="9 22 9 12 15 12 15 22"/>
+          </svg>
+        `;
+
+        const distText = venue.distance !== undefined && venue.distance !== null 
+          ? ` (cách ${venue.distance < 1 ? `${Math.round(venue.distance * 1000)}m` : `${venue.distance.toFixed(1)}km`})`
+          : '';
+
+        const popupHTML = `
+          <div class="cartoon-popup">
+            <h4>${venue.name}</h4>
+            <p>📍 ${venue.address}${distText}</p>
+          </div>
+        `;
+
+        const popup = new mapboxgl.Popup({
+          offset: 20,
+          closeButton: false,
+        }).setHTML(popupHTML);
+
+        el.addEventListener("click", (e) => {
+          e.stopPropagation();
+          showTempMarker(venue.lng, venue.lat);
+          if (onLocationSelect) {
+            onLocationSelect(venue.lng, venue.lat);
+          }
+        });
+
+        const marker = new mapboxgl.Marker(el)
+          .setLngLat([venue.lng, venue.lat])
+          .setPopup(popup)
+          .addTo(map);
+
+        markersList.push(marker);
+      });
+      return;
+    }
 
     meetups.forEach((meetup) => {
       const el = document.createElement("div");
@@ -101,6 +169,11 @@
         closeButton: false,
       }).setHTML(popupHTML);
 
+      // Stop click event propagation so meeple click opens popup without triggering map click
+      el.addEventListener("click", (e) => {
+        e.stopPropagation();
+      });
+
       const marker = new mapboxgl.Marker(el)
         .setLngLat([meetup.lng, meetup.lat])
         .setPopup(popup)
@@ -129,7 +202,7 @@
 
   // Reactive updates of markers based on filtered meetups prop (Svelte 5 effect)
   $effect(() => {
-    if (mapInstance && meetups) {
+    if (mapInstance && (meetups || presetVenues)) {
       renderMarkers();
     }
   });
@@ -137,11 +210,22 @@
   // Reactive update of the temporary marker and camera flying when coordinates change from autocomplete input
   $effect(() => {
     if (mapInstance) {
-      if (selectedLat !== null && selectedLng !== null) {
+      if (mode === "select" && selectedLat !== null && selectedLng !== null) {
         showTempMarker(selectedLng, selectedLat);
       } else {
         clearTempMarker();
       }
+    }
+  });
+
+  // Automatically focus/fly to single meetup when viewing location of a specific meetup
+  $effect(() => {
+    if (mapInstance && mode === "discover" && meetups.length === 1) {
+      mapInstance.flyTo({
+        center: [meetups[0].lng, meetups[0].lat],
+        zoom: 14.5,
+        essential: true,
+      });
     }
   });
 
@@ -255,8 +339,9 @@
       });
       mapInstance.addControl(geolocate, "top-right");
 
-      // Add click listener for selecting meetup location
+      // Add click listener for selecting meetup location (only active in 'select' mode)
       mapInstance.on("click", (e) => {
+        if (mode !== "select") return;
         const { lng, lat } = e.lngLat;
 
         // Show temp marker where user clicked geographically
@@ -334,7 +419,9 @@
 <style>
   .map-wrapper {
     width: 100%;
-    height: 480px;
+    flex: 1;
+    height: 100%;
+    min-height: 220px;
     position: relative;
     border: var(--border-width) solid var(--color-border);
     border-radius: var(--radius-lg);
@@ -345,13 +432,21 @@
 
   @media (max-width: 768px) {
     .map-wrapper {
-      height: 380px;
+      flex: 1;
+      height: 100%;
+      min-height: 200px;
     }
   }
 
   .map-container {
     width: 100%;
     height: 100%;
+  }
+
+  :global(.mapboxgl-canvas-container),
+  :global(.mapboxgl-canvas) {
+    width: 100% !important;
+    height: 100% !important;
   }
 
   /* Warning container styles */

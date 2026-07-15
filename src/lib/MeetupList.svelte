@@ -375,7 +375,7 @@
           <div class="card-action-row">
             <button
               class="btn btn-secondary action-btn"
-              onclick={() => navigate({ name: "map", mode: "discover" })}
+              onclick={() => navigate({ name: "map", mode: "discover", meetupId: meetup.id })}
             >
               <Icon name="map" size={15} />
               <span>Vị trí</span>
