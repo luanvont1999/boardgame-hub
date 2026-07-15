@@ -63,7 +63,7 @@ export async function initNotifications(userId: string, onForegroundNotification
 export async function sendPushNotificationProxy(fcmToken: string, title: string, body: string, clickAction?: string) {
   if (!fcmToken) return;
 
-  const API_BASE = import.meta.env.VITE_API_URL || '';
+  const API_BASE = import.meta.env.DEV ? (import.meta.env.VITE_API_URL || '') : '';
   try {
     const res = await fetch(`${API_BASE}/api/send-notification`, {
       method: 'POST',
@@ -102,7 +102,7 @@ export async function broadcastPushNotifications(title: string, body: string, cl
       return { success: false, message: 'Không tìm thấy thiết bị nào có đăng ký FCM Token trên Firestore!' };
     }
 
-    const API_BASE = import.meta.env.VITE_API_URL || '';
+    const API_BASE = import.meta.env.DEV ? (import.meta.env.VITE_API_URL || '') : '';
     const res = await fetch(`${API_BASE}/api/send-notification`, {
       method: 'POST',
       headers: {
@@ -152,7 +152,7 @@ export async function notifyMeetupChatMembers(
     const tokens = (await Promise.all(tokenPromises)).filter((t): t is string => Boolean(t));
     if (tokens.length === 0) return;
 
-    const API_BASE = import.meta.env.VITE_API_URL || '';
+    const API_BASE = import.meta.env.DEV ? (import.meta.env.VITE_API_URL || '') : '';
     const title = `💬 [${meetupTitle}] ${senderName}`;
     const body = messageText.length > 80 ? messageText.substring(0, 80) + '...' : messageText;
 

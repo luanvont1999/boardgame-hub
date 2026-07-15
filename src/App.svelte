@@ -78,7 +78,7 @@
   let apiMessage = $state<string>("Đang ping server Go...");
   let apiCode = $state<number | null>(null);
   let isChecking = $state<boolean>(false);
-  const API_BASE = import.meta.env.VITE_API_URL || "";
+  const API_BASE = import.meta.env.DEV ? (import.meta.env.VITE_API_URL || "") : "";
 
   // PWA Install state
   let deferredPrompt = $state<any>(null);
