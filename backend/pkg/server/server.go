@@ -193,10 +193,31 @@ func sendFCMNotification(token, title, body, clickAction string) error {
 // ── FIRESTORE REST API HELPERS ─────────────────────────────────────────────
 
 type FirestoreField struct {
-	StringValue  string        `json:"stringValue,omitempty"`
-	IntegerValue string        `json:"integerValue,omitempty"`
+	StringValue  string          `json:"stringValue,omitempty"`
+	IntegerValue string          `json:"integerValue,omitempty"`
 	ArrayValue   *FirestoreArray `json:"arrayValue,omitempty"`
 	MapValue     *FirestoreMap   `json:"mapValue,omitempty"`
+}
+
+func (f FirestoreField) MarshalJSON() ([]byte, error) {
+	if f.ArrayValue != nil {
+		return json.Marshal(struct {
+			ArrayValue *FirestoreArray `json:"arrayValue"`
+		}{ArrayValue: f.ArrayValue})
+	}
+	if f.MapValue != nil {
+		return json.Marshal(struct {
+			MapValue *FirestoreMap `json:"mapValue"`
+		}{MapValue: f.MapValue})
+	}
+	if f.IntegerValue != "" {
+		return json.Marshal(struct {
+			IntegerValue string `json:"integerValue"`
+		}{IntegerValue: f.IntegerValue})
+	}
+	return json.Marshal(struct {
+		StringValue string `json:"stringValue"`
+	}{StringValue: f.StringValue})
 }
 
 type FirestoreArray struct {
@@ -396,7 +417,15 @@ func updateFirestoreMeetup(m *MeetupData, updateFields []string) error {
 		return err
 	}
 
-	doc := buildFirestoreDocument(m)
+	fullDoc := buildFirestoreDocument(m)
+	filteredFields := make(map[string]FirestoreField)
+	for _, field := range updateFields {
+		if val, ok := fullDoc.Fields[field]; ok {
+			filteredFields[field] = val
+		}
+	}
+	doc := &FirestoreDocument{Fields: filteredFields}
+
 	bodyData, err := json.Marshal(doc)
 	if err != nil {
 		return err
