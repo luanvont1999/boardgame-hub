@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db, auth } from "./firebase";
 import { onAuthStateChanged } from "firebase/auth";
@@ -10,49 +11,57 @@ export interface UserProfile {
   loaded: boolean;
 }
 
-class UserProfileState {
-  profile = $state<UserProfile>({
-    uid: "",
-    displayName: "",
-    bio: "",
-    favoriteCategories: [],
-    loaded: false,
-  });
+const defaultProfile: UserProfile = {
+  uid: "",
+  displayName: "",
+  bio: "",
+  favoriteCategories: [],
+  loaded: false,
+};
 
-  isLoading = $state(false);
+let _profile: UserProfile = { ...defaultProfile };
+let _isLoading = false;
+const listeners = new Set<() => void>();
+
+function notify() {
+  listeners.forEach((fn) => fn());
+}
+
+class UserProfileState {
+  get profile() {
+    return _profile;
+  }
+
+  get isLoading() {
+    return _isLoading;
+  }
 
   constructor() {
     if (typeof window !== "undefined") {
       onAuthStateChanged(auth, async (user) => {
         if (user) {
-          const isUserChanged = this.profile.uid !== user.uid;
-          this.profile.uid = user.uid;
-          // Fetch if user changed or not loaded yet
-          if (isUserChanged || !this.profile.loaded) {
+          const isUserChanged = _profile.uid !== user.uid;
+          _profile.uid = user.uid;
+          if (isUserChanged || !_profile.loaded) {
             await this.fetchProfile(user.uid, user.displayName);
           }
         } else {
-          // Reset state on sign out
-          this.profile = {
-            uid: "",
-            displayName: "",
-            bio: "",
-            favoriteCategories: [],
-            loaded: false,
-          };
+          _profile = { ...defaultProfile };
+          notify();
         }
       });
     }
   }
 
   async fetchProfile(uid: string, defaultDisplayName?: string | null) {
-    this.isLoading = true;
+    _isLoading = true;
+    notify();
     try {
       const docRef = doc(db, "users", uid);
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
         const data = docSnap.data();
-        this.profile = {
+        _profile = {
           uid,
           displayName: data.displayName || defaultDisplayName || "",
           bio: data.bio || "",
@@ -60,7 +69,7 @@ class UserProfileState {
           loaded: true,
         };
       } else {
-        this.profile = {
+        _profile = {
           uid,
           displayName: defaultDisplayName || "",
           bio: "",
@@ -71,15 +80,17 @@ class UserProfileState {
     } catch (err) {
       console.error("Lỗi tải thông tin user profile:", err);
     } finally {
-      this.isLoading = false;
+      _isLoading = false;
+      notify();
     }
   }
 
   async updateProfile(data: { displayName: string; bio: string; favoriteCategories: string[] }) {
-    if (!this.profile.uid) return;
-    this.isLoading = true;
+    if (!_profile.uid) return;
+    _isLoading = true;
+    notify();
     try {
-      const docRef = doc(db, "users", this.profile.uid);
+      const docRef = doc(db, "users", _profile.uid);
       await setDoc(docRef, {
         displayName: data.displayName,
         bio: data.bio,
@@ -87,9 +98,8 @@ class UserProfileState {
         updatedAt: new Date(),
       }, { merge: true });
 
-      // Update local state
-      this.profile = {
-        uid: this.profile.uid,
+      _profile = {
+        uid: _profile.uid,
         displayName: data.displayName,
         bio: data.bio,
         favoriteCategories: data.favoriteCategories,
@@ -99,9 +109,29 @@ class UserProfileState {
       console.error("Lỗi cập nhật user profile:", err);
       throw err;
     } finally {
-      this.isLoading = false;
+      _isLoading = false;
+      notify();
     }
   }
 }
 
 export const userProfileState = new UserProfileState();
+
+export function useUserProfile() {
+  const [profile, setProfile] = useState<UserProfile>(_profile);
+  const [isLoading, setIsLoading] = useState<boolean>(_isLoading);
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setProfile({ ..._profile });
+      setIsLoading(_isLoading);
+    };
+
+    listeners.add(handleUpdate);
+    return () => {
+      listeners.delete(handleUpdate);
+    };
+  }, []);
+
+  return { profile, isLoading, userProfileState };
+}

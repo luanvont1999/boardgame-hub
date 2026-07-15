@@ -3,7 +3,7 @@ import {
   onSnapshot
 } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
-import { db } from './firebase';
+import { db } from '../libs/firebase';
 
 export interface MeetupRequest {
   uid: string;

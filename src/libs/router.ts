@@ -1,7 +1,4 @@
-/**
- * Lightweight Hash-based client-side router for Boardgame Luna SPA.
- * Uses Svelte 5 runes — fully synchronized with browser address bar.
- */
+import { useState, useEffect } from 'react';
 
 export type RouteParams =
   | { name: 'find' }
@@ -14,21 +11,16 @@ export type RouteParams =
   | { name: 'chat'; meetupId: string }
   | { name: 'manage'; meetupId: string };
 
-/** Routes that are "child" fullscreen pages — hide tab bar */
 export const CHILD_ROUTES: RouteParams['name'][] = ['filter', 'map', 'chat', 'manage'];
 
-// ── Svelte 5 rune-based global state ──────────────────────────────────────────
-
-let _route = $state<RouteParams>({ name: 'find' });
-let _history = $state<RouteParams[]>([]);
+let _route: RouteParams = { name: 'find' };
+let _history: RouteParams[] = [];
+const listeners = new Set<(route: RouteParams) => void>();
 
 export function currentRoute(): RouteParams {
   return _route;
 }
 
-/**
- * Parse hash string (e.g. "#/manage/123") into RouteParams object
- */
 export function parseHash(hash: string): RouteParams {
   const cleanHash = hash.startsWith('#') ? hash.slice(1) : hash;
   if (!cleanHash || cleanHash === '/' || cleanHash === '/find') {
@@ -56,7 +48,6 @@ export function parseHash(hash: string): RouteParams {
     return { name: 'map', mode: 'select' };
   }
 
-  // Parse dynamic paths (e.g. ["", "map", "discover", "123"] or ["", "chat", "123"])
   const parts = cleanHash.split('/');
   if (parts.length >= 3) {
     const routeName = parts[1];
@@ -77,9 +68,6 @@ export function parseHash(hash: string): RouteParams {
   return { name: 'find' };
 }
 
-/**
- * Build hash string from RouteParams object
- */
 export function buildHash(route: RouteParams): string {
   if (route.name === 'find') return '#/find';
   if (route.name === 'my-meetups') return '#/my-meetups';
@@ -95,51 +83,64 @@ export function buildHash(route: RouteParams): string {
   return '#/find';
 }
 
-/**
- * Navigate to a new route by setting window hash.
- */
-export function navigate(to: RouteParams) {
-  const newHash = buildHash(to);
-  _history.push(_route);
-  window.location.hash = newHash;
+function notifyListeners() {
+  listeners.forEach(fn => fn(_route));
 }
 
-/**
- * Go back to the previous route.
- */
+export function navigate(to: RouteParams) {
+  _history.push(_route);
+  _route = to;
+  window.location.hash = buildHash(to);
+  notifyListeners();
+}
+
 export function goBack() {
   if (_history.length > 0) {
     const prev = _history.pop()!;
+    _route = prev;
     window.location.hash = buildHash(prev);
   } else {
+    _route = { name: 'find' };
     window.location.hash = '#/find';
   }
+  notifyListeners();
 }
 
 export function navigateToTab(tab: 'find' | 'my-meetups' | 'chats' | 'create' | 'profile') {
   _history = [];
+  _route = { name: tab };
   window.location.hash = `#/${tab}`;
+  notifyListeners();
 }
 
-/** True when current route is a child page (tab bar should be hidden) */
-export function isChildRoute(): boolean {
-  return CHILD_ROUTES.includes(_route.name);
+export function isChildRoute(routeName: RouteParams['name']): boolean {
+  return CHILD_ROUTES.includes(routeName);
 }
 
-// ── Event Listener for Hash Change ───────────────────────────────────────────
+export function useRoute(): RouteParams {
+  const [route, setRoute] = useState<RouteParams>(_route);
 
-export function initRouter() {
-  const syncRoute = () => {
-    _route = parseHash(window.location.hash);
-  };
+  useEffect(() => {
+    const syncRoute = () => {
+      const parsed = parseHash(window.location.hash);
+      _route = parsed;
+      setRoute(parsed);
+    };
 
-  // Sync initially
-  syncRoute();
+    syncRoute();
 
-  // Listen to browser back/forward and programmatic hash edits
-  window.addEventListener('hashchange', syncRoute);
+    const handleHashChange = () => {
+      syncRoute();
+    };
 
-  return () => {
-    window.removeEventListener('hashchange', syncRoute);
-  };
+    window.addEventListener('hashchange', handleHashChange);
+    listeners.add(setRoute);
+
+    return () => {
+      window.removeEventListener('hashchange', handleHashChange);
+      listeners.delete(setRoute);
+    };
+  }, []);
+
+  return route;
 }
