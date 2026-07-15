@@ -8,21 +8,6 @@
     type MeetupRequest 
   } from '../lib/meetupService';
   import { goBack } from '../lib/router.svelte';
-  import { doc, getDoc } from 'firebase/firestore';
-  import { db } from '../lib/firebase';
-  import { sendPushNotificationProxy } from '../lib/notificationService';
-
-  async function getUserFcmToken(uid: string): Promise<string | null> {
-    try {
-      const userDoc = await getDoc(doc(db, 'users', uid));
-      if (userDoc.exists()) {
-        return userDoc.data()?.fcmToken || null;
-      }
-    } catch (e) {
-      console.error("Lỗi lấy FCM token của user:", e);
-    }
-    return null;
-  }
 
   interface Meetup {
     id: string;
@@ -80,17 +65,6 @@
     isProcessing = true;
     try {
       await approveMember(meetup.id, playerUid);
-      
-      const token = await getUserFcmToken(playerUid);
-      if (token) {
-        const host = meetup.hostName || meetup.host_name || 'Host';
-        sendPushNotificationProxy(
-          token,
-          "🎉 Yêu cầu đã được duyệt!",
-          `Bạn đã được duyệt tham gia kèo "${meetup.title}" chơi game ${meetup.game} của ${host}!`,
-          `/?route=manage&meetupId=${meetup.id}`
-        );
-      }
     } catch (err) {
       console.error('Approve error:', err);
     } finally {
@@ -103,16 +77,6 @@
     isProcessing = true;
     try {
       await rejectMember(meetup.id, playerUid);
-
-      const token = await getUserFcmToken(playerUid);
-      if (token) {
-        sendPushNotificationProxy(
-          token,
-          "✕ Yêu cầu tham gia bị từ chối",
-          `Rất tiếc, yêu cầu tham gia kèo "${meetup.title}" của bạn đã bị từ chối.`,
-          `/`
-        );
-      }
     } catch (err) {
       console.error('Reject error:', err);
     } finally {
@@ -124,17 +88,9 @@
     if (!meetup?.id || isProcessing) return;
     isProcessing = true;
     try {
-      await kickOrLeaveMember(meetup.id, playerUid);
-
-      const token = await getUserFcmToken(playerUid);
-      if (token) {
-        sendPushNotificationProxy(
-          token,
-          "✕ Bạn đã bị xóa khỏi kèo",
-          `Host đã xóa bạn khỏi danh sách tham gia kèo "${meetup.title}".`,
-          `/`
-        );
-      }
+      const playerReq = requests.find(r => r.uid === playerUid);
+      const playerName = playerReq ? playerReq.name : 'Thành viên';
+      await kickOrLeaveMember(meetup.id, playerUid, playerName, true);
     } catch (err) {
       console.error('Kick error:', err);
     } finally {

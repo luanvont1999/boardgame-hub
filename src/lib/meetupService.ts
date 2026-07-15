@@ -1,13 +1,5 @@
 import { 
-  doc, 
   collection, 
-  setDoc, 
-  deleteDoc, 
-  updateDoc, 
-  arrayUnion, 
-  arrayRemove, 
-  increment, 
-  serverTimestamp,
   onSnapshot
 } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
@@ -19,6 +11,8 @@ export interface MeetupRequest {
   status: 'pending' | 'approved' | 'rejected';
   createdAt?: any;
 }
+
+const API_BASE = import.meta.env.VITE_API_URL || '';
 
 /**
  * Checks if a user is an approved member or host of a meetup
@@ -43,79 +37,141 @@ export function isHost(meetup: any, userUid: string | null | undefined): boolean
 }
 
 /**
- * Player sends a join request to a meetup
+ * Player sends a join request to a meetup (called via Go Backend)
  */
 export async function requestToJoin(meetupId: string, user: User) {
-  const reqRef = doc(db, 'meetups', meetupId, 'requests', user.uid);
-  const meetupRef = doc(db, 'meetups', meetupId);
   const name = user.displayName || user.email || 'Thành viên';
-  
-  await setDoc(reqRef, {
-    uid: user.uid,
-    name,
-    status: 'pending',
-    createdAt: serverTimestamp()
+  const fcmToken = localStorage.getItem('fcmToken') || '';
+
+  const res = await fetch(`${API_BASE}/api/meetups/join`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      meetupId,
+      userUid: user.uid,
+      userName: name,
+      fcmToken
+    })
   });
 
-  await updateDoc(meetupRef, {
-    pendingUids: arrayUnion(user.uid)
-  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Gửi yêu cầu tham gia thất bại: ${text}`);
+  }
 }
 
 /**
- * Player cancels their pending join request
+ * Player cancels their pending join request (calls leave API via Go Backend)
  */
 export async function cancelJoinRequest(meetupId: string, userUid: string) {
-  const reqRef = doc(db, 'meetups', meetupId, 'requests', userUid);
-  const meetupRef = doc(db, 'meetups', meetupId);
-
-  await deleteDoc(reqRef);
-  await updateDoc(meetupRef, {
-    pendingUids: arrayRemove(userUid)
+  const res = await fetch(`${API_BASE}/api/meetups/leave`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      meetupId,
+      playerUid: userUid,
+      playerName: 'Thành viên',
+      isKick: false
+    })
   });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Hủy yêu cầu tham gia thất bại: ${text}`);
+  }
 }
 
 /**
- * Host approves a pending player to join the meetup
+ * Host approves a pending player to join the meetup (calls approve API via Go Backend)
  */
 export async function approveMember(meetupId: string, playerUid: string) {
-  const reqRef = doc(db, 'meetups', meetupId, 'requests', playerUid);
-  const meetupRef = doc(db, 'meetups', meetupId);
-
-  await updateDoc(reqRef, { status: 'approved' });
-  await updateDoc(meetupRef, {
-    approvedUids: arrayUnion(playerUid),
-    pendingUids: arrayRemove(playerUid),
-    playersCount: increment(1)
+  const res = await fetch(`${API_BASE}/api/meetups/approve`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      meetupId,
+      playerUid
+    })
   });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Duyệt thành viên thất bại: ${text}`);
+  }
 }
 
 /**
- * Host rejects a pending player request
+ * Host rejects a pending player request (calls leave API via Go Backend)
  */
 export async function rejectMember(meetupId: string, playerUid: string) {
-  const reqRef = doc(db, 'meetups', meetupId, 'requests', playerUid);
-  const meetupRef = doc(db, 'meetups', meetupId);
-
-  await updateDoc(reqRef, { status: 'rejected' });
-  await updateDoc(meetupRef, {
-    pendingUids: arrayRemove(playerUid)
+  const res = await fetch(`${API_BASE}/api/meetups/leave`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      meetupId,
+      playerUid,
+      playerName: 'Thành viên',
+      isKick: true
+    })
   });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Từ chối thành viên thất bại: ${text}`);
+  }
 }
 
 /**
- * Host kicks an approved member OR member leaves the meetup
+ * Host kicks an approved member OR member leaves the meetup (calls leave API via Go Backend)
  */
-export async function kickOrLeaveMember(meetupId: string, playerUid: string) {
-  const reqRef = doc(db, 'meetups', meetupId, 'requests', playerUid);
-  const meetupRef = doc(db, 'meetups', meetupId);
-
-  await deleteDoc(reqRef);
-  await updateDoc(meetupRef, {
-    approvedUids: arrayRemove(playerUid),
-    pendingUids: arrayRemove(playerUid), // defensive cleanup
-    playersCount: increment(-1)
+export async function kickOrLeaveMember(meetupId: string, playerUid: string, playerName: string = 'Thành viên', isKick: boolean = false) {
+  const res = await fetch(`${API_BASE}/api/meetups/leave`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      meetupId,
+      playerUid,
+      playerName,
+      isKick
+    })
   });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Rời/Kick thành viên thất bại: ${text}`);
+  }
+}
+
+/**
+ * Player confirms their participation to formally join the meetup (calls confirm API via Go Backend)
+ */
+export async function confirmParticipation(meetupId: string, userUid: string, userName: string) {
+  const res = await fetch(`${API_BASE}/api/meetups/confirm`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      meetupId,
+      userUid,
+      userName
+    })
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Xác nhận tham gia kèo thất bại: ${text}`);
+  }
 }
 
 /**

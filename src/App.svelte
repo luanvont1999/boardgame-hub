@@ -7,6 +7,7 @@
     currentRoute,
     navigateToTab,
     isChildRoute,
+    navigate,
     type RouteParams,
   } from "./lib/router.svelte";
   import { initNotifications } from "./lib/notificationService";
@@ -28,11 +29,11 @@
   interface Toast {
     id: string;
     message: string;
-    type: "info" | "success" | "warning";
+    type: "info" | "success" | "warning" | "error";
   }
   let toasts = $state<Toast[]>([]);
 
-  function addToast(message: string, type: "info" | "success" | "warning" = "info") {
+  function addToast(message: string, type: "info" | "success" | "warning" | "error" = "info") {
     const id = Math.random().toString(36).substring(2, 9);
     toasts = [...toasts, { id, message, type }];
     setTimeout(() => {
@@ -73,9 +74,10 @@
 
   // Tính tổng số request đang chờ duyệt đối với các kèo do mình làm host
   let totalPendingRequests = $derived.by(() => {
-    if (!currentUser) return 0;
+    const user = currentUser;
+    if (!user) return 0;
     return allMeetups
-      .filter((m) => m.hostUid === currentUser.uid || m.host_uid === currentUser.uid)
+      .filter((m) => m.hostUid === user.uid || m.host_uid === user.uid)
       .reduce((sum, m) => sum + (Array.isArray(m.pendingUids) ? m.pendingUids.length : 0), 0);
   });
 
@@ -258,7 +260,7 @@
         if (meetupId && allMeetups.length > 0) {
           const matchedMeetup = allMeetups.find(m => m.id === meetupId);
           if (matchedMeetup) {
-            navigate({ name: 'manage', params: { meetup: matchedMeetup } });
+            navigate({ name: 'manage', meetup: matchedMeetup });
           }
         }
       } else if (routeParam === 'profile') {
@@ -278,7 +280,7 @@
         const matchedMeetup = allMeetups.find(m => m.id === meetupId);
         if (matchedMeetup) {
           window.history.replaceState({}, document.title, window.location.pathname);
-          navigate({ name: 'manage', params: { meetup: matchedMeetup } });
+          navigate({ name: 'manage', meetup: matchedMeetup });
         }
       } else if (routeParam === 'profile') {
         window.history.replaceState({}, document.title, window.location.pathname);

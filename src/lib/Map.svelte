@@ -59,7 +59,8 @@
   }
 
   function renderMarkers() {
-    if (!mapInstance) return;
+    const map = mapInstance;
+    if (!map) return;
     clearMarkers();
 
     meetups.forEach((meetup) => {
@@ -103,7 +104,7 @@
       const marker = new mapboxgl.Marker(el)
         .setLngLat([meetup.lng, meetup.lat])
         .setPopup(popup)
-        .addTo(mapInstance);
+        .addTo(map);
 
       markersList.push(marker);
       markersMap.set(meetup.id, marker);
@@ -153,7 +154,8 @@
   }
 
   export function showTempMarker(lng: number, lat: number) {
-    if (!mapInstance) return;
+    const map = mapInstance;
+    if (!map) return;
     if (tempMarker) {
       tempMarker.remove();
     }
@@ -182,7 +184,7 @@
 
     tempMarker = new mapboxgl.Marker(el)
       .setLngLat([lng, lat])
-      .addTo(mapInstance);
+      .addTo(map);
   }
 
   export function flyToMeetup(meetup: Meetup) {

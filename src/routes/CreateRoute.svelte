@@ -49,9 +49,10 @@
 
   // Số lượng yêu cầu đang chờ duyệt đối với các kèo do mình làm host
   let pendingCount = $derived.by(() => {
-    if (!currentUser) return 0;
+    const user = currentUser;
+    if (!user) return 0;
     return meetups
-      .filter((m) => m.hostUid === currentUser.uid || m.host_uid === currentUser.uid)
+      .filter((m) => m.hostUid === user.uid || m.host_uid === user.uid)
       .reduce((sum, m) => sum + (Array.isArray(m.pendingUids) ? m.pendingUids.length : 0), 0);
   });
 

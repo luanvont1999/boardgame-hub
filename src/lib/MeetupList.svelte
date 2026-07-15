@@ -8,9 +8,9 @@
     requestToJoin,
     cancelJoinRequest,
     kickOrLeaveMember,
+    confirmParticipation,
   } from "./meetupService";
   import { navigate } from "./router.svelte";
-  import { sendPushNotificationProxy } from "./notificationService";
 
   interface Meetup {
     id: string;
@@ -30,6 +30,7 @@
     color: string;
     hostFcmToken?: string;
     pendingUids?: string[];
+    approvedPendingUids?: string[];
   }
 
   // Props — no more callback props for chat/manage/map
@@ -65,24 +66,11 @@
 
   onDestroy(() => {
     if (unsubscribeAuth) unsubscribeAuth();
-  });
-
-  async function handleJoinRequest(meetup: Meetup) {
+  });  async function handleJoinRequest(meetup: Meetup) {
     if (!currentUser || isActionProcessing) return;
     isActionProcessing = true;
     try {
       await requestToJoin(meetup.id, currentUser);
-      
-      // Gửi thông báo đẩy tới Host thiết bị di động
-      if (meetup.hostFcmToken) {
-        const playerName = currentUser.displayName || currentUser.email || 'Thành viên mới';
-        sendPushNotificationProxy(
-          meetup.hostFcmToken,
-          "🎯 Yêu cầu tham gia kèo mới!",
-          `${playerName} muốn xin vào kèo "${meetup.title}" chơi game ${meetup.game} của bạn.`,
-          `/?route=manage&meetupId=${meetup.id}`
-        );
-      }
     } catch (err) {
       console.error("Request join error:", err);
     } finally {
@@ -95,17 +83,6 @@
     isActionProcessing = true;
     try {
       await cancelJoinRequest(meetup.id, currentUser.uid);
-
-      // Gửi thông báo đẩy tới Host thông báo đã hủy
-      if (meetup.hostFcmToken) {
-        const playerName = currentUser.displayName || currentUser.email || 'Thành viên';
-        sendPushNotificationProxy(
-          meetup.hostFcmToken,
-          "✕ Yêu cầu tham gia đã bị hủy",
-          `${playerName} đã hủy yêu cầu tham gia kèo "${meetup.title}" của bạn.`,
-          `/?route=manage&meetupId=${meetup.id}`
-        );
-      }
     } catch (err) {
       console.error("Cancel request error:", err);
     } finally {
@@ -117,20 +94,23 @@
     if (!currentUser || isActionProcessing) return;
     isActionProcessing = true;
     try {
-      await kickOrLeaveMember(meetup.id, currentUser.uid);
-
-      // Gửi thông báo đẩy tới Host thông báo người chơi rời kèo
-      if (meetup.hostFcmToken) {
-        const playerName = currentUser.displayName || currentUser.email || 'Thành viên';
-        sendPushNotificationProxy(
-          meetup.hostFcmToken,
-          "🚪 Thành viên rời kèo",
-          `${playerName} đã rời khỏi kèo "${meetup.title}" của bạn.`,
-          `/?route=manage&meetupId=${meetup.id}`
-        );
-      }
+      const name = currentUser.displayName || currentUser.email || 'Thành viên';
+      await kickOrLeaveMember(meetup.id, currentUser.uid, name, false);
     } catch (err) {
       console.error("Leave meetup error:", err);
+    } finally {
+      isActionProcessing = false;
+    }
+  }
+
+  async function handleConfirm(meetup: Meetup) {
+    if (!currentUser || isActionProcessing) return;
+    isActionProcessing = true;
+    try {
+      const name = currentUser.displayName || currentUser.email || 'Thành viên';
+      await confirmParticipation(meetup.id, currentUser.uid, name);
+    } catch (err) {
+      console.error("Confirm participation error:", err);
     } finally {
       isActionProcessing = false;
     }
@@ -258,6 +238,9 @@
         {@const userIsPending =
           Array.isArray(meetup.pendingUids) &&
           meetup.pendingUids.includes(currentUser?.uid || "")}
+        {@const userIsApprovedPending =
+          Array.isArray(meetup.approvedPendingUids) &&
+          meetup.approvedPendingUids.includes(currentUser?.uid || "")}
 
         <div
           class="cartoon-card meetup-item-card"
@@ -268,7 +251,7 @@
             <span
               class="city-badge {city === 'HCM' ? 'hcm-color' : 'hn-color'}"
             >
-              {city === "HCM" ? "🌆 HCM" : "🏰 HN"}
+              {city === 'HCM' ? '🌆 HCM' : '🏰 HN'}
             </span>
             {#if distance !== null}
               <span class="distance-badge">
@@ -282,6 +265,8 @@
               {/if}
             {:else if userIsMember}
               <span class="membership-badge member-tag">✅ Đã tham gia</span>
+            {:else if userIsApprovedPending}
+              <span class="membership-badge approved-pending-tag pulsing-badge">🎉 Được duyệt</span>
             {:else if userIsPending}
               <span class="membership-badge pending-tag">⏳ Chờ duyệt</span>
             {/if}
@@ -352,6 +337,21 @@
                 disabled={isActionProcessing}
               >
                 Rời 🚪
+              </button>
+            {:else if userIsApprovedPending}
+              <button
+                class="btn btn-warning action-btn pulse-button"
+                onclick={() => handleConfirm(meetup)}
+                disabled={isActionProcessing}
+              >
+                {isActionProcessing ? "..." : "Xác nhận 🤝"}
+              </button>
+              <button
+                class="btn btn-secondary action-btn cancel-btn"
+                onclick={() => handleCancel(meetup)}
+                disabled={isActionProcessing}
+              >
+                Từ chối ✕
               </button>
             {:else if userIsPending}
               <button
@@ -614,5 +614,31 @@
   @keyframes wiggle {
     0% { transform: rotate(-2deg); }
     100% { transform: rotate(2deg); }
+  }
+
+  .approved-pending-tag {
+    background-color: #fef08a !important;
+    color: var(--text-dark) !important;
+  }
+
+  .pulsing-badge {
+    animation: wiggle 0.5s ease-in-out infinite alternate;
+  }
+
+  .pulse-button {
+    background-color: var(--pastel-yellow, #fef08a) !important;
+    animation: pulse-glow 1.5s infinite;
+  }
+
+  @keyframes pulse-glow {
+    0% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.05);
+    }
+    100% {
+      transform: scale(1);
+    }
   }
 </style>
