@@ -135,6 +135,7 @@
 
       // Trigger push notification to other participating members asynchronously
       notifyMeetupChatMembers(
+        meetup.id,
         meetup.title,
         allMembers,
         currentUser.uid,

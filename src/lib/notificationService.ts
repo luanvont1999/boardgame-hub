@@ -127,6 +127,7 @@ export async function broadcastPushNotifications(title: string, body: string, cl
  * Gửi thông báo đẩy tới tất cả các thành viên tham gia trong kèo khi có tin nhắn mới.
  */
 export async function notifyMeetupChatMembers(
+  meetupId: string,
   meetupTitle: string,
   allMemberUids: string[],
   senderUid: string,
@@ -163,7 +164,7 @@ export async function notifyMeetupChatMembers(
         fcmTokens: tokens,
         title,
         body,
-        clickAction: window.location.origin
+        clickAction: `/#/chat/${meetupId}`
       })
     });
     console.log(`[FCM Chat Notification] Sent notification to ${tokens.length} members.`);
