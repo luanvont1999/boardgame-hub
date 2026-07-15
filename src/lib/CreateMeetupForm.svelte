@@ -1,11 +1,10 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import { onAuthStateChanged, type User } from 'firebase/auth';
-  import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-  import { auth, db } from './firebase';
-  import { navigate } from './router.svelte';
-
-
+  import { onMount } from "svelte";
+  import { onAuthStateChanged, type User } from "firebase/auth";
+  import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+  import { auth, db } from "./firebase";
+  import { navigate } from "./router.svelte";
+  import Icon from "./Icon.svelte";
 
   // Svelte 5 props with bindable selectedLat, selectedLng, addressText and proximity current GPS
   interface Props {
@@ -16,22 +15,28 @@
     addressText?: string;
     onCreateSuccess: () => void;
   }
-  let { 
-    selectedLat = $bindable(null), 
-    selectedLng = $bindable(null), 
+  let {
+    selectedLat = $bindable(null),
+    selectedLng = $bindable(null),
     userLat = null,
     userLng = null,
-    addressText = $bindable(''),
-    onCreateSuccess, 
+    addressText = $bindable(""),
+    onCreateSuccess,
   }: Props = $props();
 
   // State variables (Svelte 5 runes)
   let user = $state<User | null>(null);
-  let title = $state<string>('');
-  let game = $state<string>('');
-  let time = $state<string>(''); // datetime-local format
+  let title = $state<string>("");
+  let game = $state<string>("");
+  let time = $state<string>(""); // datetime-local format
   let lat = $state<number | null>(null);
   let lng = $state<number | null>(null);
+
+  // New detailed fields
+  let playersCount = $state<number>(1);
+  let playersNeeded = $state<number>(4);
+  let estimatedDuration = $state<string>("2 - 3 tiếng");
+  let notes = $state<string>("");
 
   // Address Geocoding states
   let suggestions = $state<any[]>([]);
@@ -39,17 +44,9 @@
   let isSearchingAddress = $state<boolean>(false);
   let debounceTimer: any = null;
 
-  // Preset popular board game cafes
-  const popularVenues = [
-    { name: "🎲 Boardgame Station", address: "21 Cô Bắc, Quận 1, TP. HCM", lat: 10.7656, lng: 106.6961 },
-    { name: "☕ Cashflow Cafe", address: "7A/19 Thành Thái, Quận 10, TP. HCM", lat: 10.7712, lng: 106.6644 },
-    { name: "🐺 Ma Sói Guild", address: "12 Vệ Hồ, Tây Hồ, Hà Nội", lat: 21.0620, lng: 105.8155 },
-    { name: "🏰 The Boardgame Hub", address: "45 Lương Ngọc Quyến, Hoàn Kiếm, Hà Nội", lat: 21.0345, lng: 105.8524 }
-  ];
-
   let isSubmitting = $state<boolean>(false);
-  let errorMessage = $state<string>('');
-  let successMessage = $state<string>('');
+  let errorMessage = $state<string>("");
+  let successMessage = $state<string>("");
 
   async function reverseGeocode(targetLat: number, targetLng: number) {
     const token = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
@@ -92,7 +89,7 @@
       if (lat !== null || lng !== null) {
         lat = null;
         lng = null;
-        addressText = '';
+        addressText = "";
       }
     }
   });
@@ -117,9 +114,9 @@
     if (!token) return;
 
     isSearchingAddress = true;
-    
+
     // Add proximity bias using user coordinates if GPS is available
-    let proximityQuery = '';
+    let proximityQuery = "";
     if (userLat !== null && userLng !== null) {
       proximityQuery = `&proximity=${userLng},${userLat}`;
     }
@@ -144,7 +141,7 @@
 
   function handleAddressInput() {
     showDropdown = true;
-    
+
     // Clear previous coordinate selection so they must pick one
     lat = null;
     lng = null;
@@ -159,11 +156,11 @@
 
   function selectSuggestion(item: any) {
     const [itemLng, itemLat] = item.center;
-    
+
     // Update internal coordinates
     lat = itemLat;
     lng = itemLng;
-    
+
     // Bind coordinates to parent props (will update Map and App parent)
     selectedLat = itemLat;
     selectedLng = itemLng;
@@ -173,41 +170,38 @@
     showDropdown = false;
   }
 
-  function selectPopularVenue(venue: typeof popularVenues[0]) {
-    lat = venue.lat;
-    lng = venue.lng;
-    selectedLat = venue.lat;
-    selectedLng = venue.lng;
-    addressText = `${venue.name} (${venue.address})`;
-    suggestions = [];
-    showDropdown = false;
-  }
-
   async function handleSubmit(e: Event) {
     e.preventDefault();
     if (!user) {
-      errorMessage = 'Bạn phải đăng nhập để lên kèo chơi!';
+      errorMessage = "Bạn phải đăng nhập để lên kèo chơi!";
       return;
     }
 
     if (!title || !game || !time || lat === null || lng === null) {
-      errorMessage = 'Vui lòng điền đầy đủ thông tin và nhập/chọn địa chỉ!';
+      errorMessage = "Vui lòng điền đầy đủ thông tin và nhập/chọn địa chỉ!";
       return;
     }
 
-    errorMessage = '';
-    successMessage = '';
+    errorMessage = "";
+    successMessage = "";
     isSubmitting = true;
 
     try {
-      const colors = ["#bca0f5", "#ffa4b2", "#ffe869", "#ffb875", "#9ee3b2", "#a4f0fd"];
+      const colors = [
+        "#bca0f5",
+        "#ffa4b2",
+        "#ffe869",
+        "#ffb875",
+        "#9ee3b2",
+        "#a4f0fd",
+      ];
       const color = colors[Math.floor(Math.random() * colors.length)];
-      const hostName = user.displayName || user.email || 'Ẩn danh';
+      const hostName = user.displayName || user.email || "Ẩn danh";
 
-      const hostFcmToken = localStorage.getItem('fcmToken') || '';
+      const hostFcmToken = localStorage.getItem("fcmToken") || "";
 
       // Save meetup directly to Firebase Cloud Firestore
-      await addDoc(collection(db, 'meetups'), {
+      await addDoc(collection(db, "meetups"), {
         title,
         game,
         hostName,
@@ -215,20 +209,30 @@
         hostFcmToken,
         lat,
         lng,
-        playersCount: 1,
-        playersNeeded: 4,
+        playersCount: Number(playersCount) || 1,
+        playersNeeded: Number(playersNeeded) || 4,
+        approvedUids: [user.uid],
         time,
+        estimatedDuration: estimatedDuration.trim() || "2 - 3 tiếng",
+        duration: estimatedDuration.trim() || "2 - 3 tiếng",
+        notes: notes.trim(),
+        description: notes.trim(),
         color,
-        createdAt: serverTimestamp()
+        createdAt: serverTimestamp(),
       });
 
-      successMessage = 'Tạo kèo mới thành công! Quân meeple của bạn đã được ghim lên bản đồ.';
-      
+      successMessage =
+        "Tạo kèo mới thành công! Quân meeple của bạn đã được ghim lên bản đồ.";
+
       // Reset form fields
-      title = '';
-      game = '';
-      time = '';
-      addressText = '';
+      title = "";
+      game = "";
+      time = "";
+      playersCount = 1;
+      playersNeeded = 4;
+      estimatedDuration = "2 - 3 tiếng";
+      notes = "";
+      addressText = "";
       lat = null;
       lng = null;
       selectedLat = null;
@@ -236,8 +240,9 @@
 
       onCreateSuccess();
     } catch (err: any) {
-      console.error('[Firestore] Create meetup failed:', err);
-      errorMessage = 'Lỗi tạo kèo trên Firestore: ' + (err.message || 'Lỗi kết nối');
+      console.error("[Firestore] Create meetup failed:", err);
+      errorMessage =
+        "Lỗi tạo kèo trên Firestore: " + (err.message || "Lỗi kết nối");
     } finally {
       isSubmitting = false;
     }
@@ -246,7 +251,9 @@
   // Close dropdown if clicking outside
   function handleGlobalClick(e: MouseEvent) {
     const target = e.target as HTMLElement;
-    const isInsideSearch = target.closest('.location-input-container') || target.closest('.autocomplete-dropdown-list');
+    const isInsideSearch =
+      target.closest(".location-input-container") ||
+      target.closest(".autocomplete-dropdown-list");
     if (!isInsideSearch) {
       showDropdown = false;
     }
@@ -260,19 +267,18 @@
     <!-- Locked State Warning -->
     <div class="cartoon-card locked-card">
       <div class="lock-header">
-        <span class="lock-icon">🔒</span>
+        <Icon name="lock" size={24} />
         <h3>Lên Kèo Đang Bị Khóa</h3>
       </div>
       <p style="margin-bottom: 15px; font-weight: 500;">
-        Bạn cần đăng nhập tài khoản Firebase để có thể tự lên kèo chơi riêng và mời mọi người tham gia.
+        Bạn cần đăng nhập tài khoản Firebase để có thể tự lên kèo chơi riêng và
+        mời mọi người tham gia.
       </p>
       <a href="#auth" class="btn btn-primary">Đi đến Đăng nhập ngay</a>
     </div>
   {:else}
     <!-- Playful Cartoon Form -->
     <div class="cartoon-card form-card">
-      <h3 class="form-title">🎲 Lên Kèo Chơi Mới</h3>
-      
       {#if errorMessage}
         <div class="alert error-alert">{errorMessage}</div>
       {/if}
@@ -283,100 +289,138 @@
       <form onsubmit={handleSubmit} class="meetup-form">
         <div class="form-group">
           <label for="meetup-title">Tên Kèo Chơi:</label>
-          <input 
-            type="text" 
-            id="meetup-title" 
-            placeholder="Ví dụ: Đại chiến Werewolf, Tìm chân Catan..." 
+          <input
+            type="text"
+            id="meetup-title"
+            placeholder="Ví dụ: Đại chiến Werewolf, Tìm chân Catan..."
             bind:value={title}
             disabled={isSubmitting}
-            required 
+            required
           />
         </div>
 
         <div class="form-group">
           <label for="meetup-game">Các Boardgame Sẽ Chơi:</label>
-          <input 
-            type="text" 
-            id="meetup-game" 
-            placeholder="Ví dụ: Catan, Ma sói, Avalon, Mèo nổ..." 
+          <input
+            type="text"
+            id="meetup-game"
+            placeholder="Ví dụ: Catan, Ma sói, Avalon, Mèo nổ..."
             bind:value={game}
             disabled={isSubmitting}
-            required 
+            required
           />
         </div>
 
-        <div class="form-group-row">
-          <div class="form-group">
-            <label for="meetup-time">Thời Gian:</label>
-            <input 
-              type="datetime-local" 
-              id="meetup-time" 
-              bind:value={time}
+        <div class="form-group">
+          <label for="meetup-time">Thời Gian Bắt Đầu:</label>
+          <input
+            type="datetime-local"
+            id="meetup-time"
+            bind:value={time}
+            disabled={isSubmitting}
+            required
+          />
+        </div>
+
+        <!-- Group Short Inputs in 1 compact row -->
+        <div class="form-group-row short-inputs-row">
+          <div class="form-group short-field">
+            <label for="players-count">Hiện Có:</label>
+            <input
+              type="number"
+              id="players-count"
+              min="1"
+              max="20"
+              placeholder="1"
+              bind:value={playersCount}
               disabled={isSubmitting}
-              required 
+              required
             />
           </div>
+
+          <div class="form-group short-field">
+            <label for="players-needed">Tổng Sĩ Số:</label>
+            <input
+              type="number"
+              id="players-needed"
+              min="2"
+              max="30"
+              placeholder="4"
+              bind:value={playersNeeded}
+              disabled={isSubmitting}
+              required
+            />
+          </div>
+
+          <div class="form-group duration-field">
+            <label for="meetup-duration">Dự Kiến Chơi:</label>
+            <select
+              id="meetup-duration"
+              bind:value={estimatedDuration}
+              disabled={isSubmitting}
+            >
+              <option value="1 - 2 tiếng">1 - 2 tiếng</option>
+              <option value="2 - 3 tiếng">2 - 3 tiếng</option>
+              <option value="3 - 5 tiếng">3 - 5 tiếng</option>
+              <option value="Cả buổi (~6 tiếng)">Cả buổi (~6 tiếng)</option>
+              <option value="Tùy hứng">Tùy hứng</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="meetup-notes">Thông Tin Thêm / Ghi Chú:</label>
+          <textarea
+            id="meetup-notes"
+            placeholder="Ví dụ: Đã đặt trước bàn ở quán, bao hướng dẫn luật từ A-Z, tìm bạn chơi vui vẻ..."
+            bind:value={notes}
+            rows="2"
+            disabled={isSubmitting}
+          ></textarea>
         </div>
 
         <div class="form-group" style="position: relative;">
           <label for="meetup-location">Vị Trí Kèo Chơi:</label>
-          
+
           <div class="location-input-container">
-            <input 
-              type="text" 
-              id="meetup-location" 
-              placeholder="Nhập địa chỉ hoặc bấm nút Bản đồ..." 
+            <input
+              type="text"
+              id="meetup-location"
+              placeholder="Nhập địa chỉ hoặc bấm nút Bản đồ..."
               bind:value={addressText}
               oninput={handleAddressInput}
-              onfocus={() => showDropdown = true}
+              onfocus={() => (showDropdown = true)}
               disabled={isSubmitting}
               autocomplete="off"
-              required 
+              required
             />
-            <button 
-              type="button" 
-              class="btn btn-secondary btn-map-select" 
-              onclick={() => navigate({ name: 'map', mode: 'select' })}
+            <button
+              type="button"
+              class="btn btn-secondary btn-map-select"
+              onclick={() => navigate({ name: "map", mode: "select" })}
               disabled={isSubmitting}
             >
-              🗺️ Bản đồ
+              <Icon name="map" size={15} />
+              <span>Bản đồ</span>
             </button>
           </div>
 
           <!-- Indication badge showing if coordinates are captured -->
           {#if lat !== null && lng !== null}
-            <span class="location-status-badge">✓ Đã nhận tọa độ</span>
+            <span class="location-status-badge"><Icon name="check" size={13} /> Đã nhận tọa độ</span>
           {:else if isSearchingAddress}
-            <span class="location-status-badge searching">Đang quét địa điểm...</span>
+            <span class="location-status-badge searching"
+              >Đang quét địa điểm...</span
+            >
           {/if}
-
-          <!-- Popular preset locations -->
-          <div class="popular-venues-container">
-            <span class="popular-title">💡 Gợi ý nhanh điểm chơi boardgame:</span>
-            <div class="venue-tags">
-              {#each popularVenues as venue}
-                <button 
-                  type="button" 
-                  class="venue-tag-btn" 
-                  onclick={() => selectPopularVenue(venue)}
-                  disabled={isSubmitting}
-                >
-                  {venue.name.split(" - ")[0]}
-                </button>
-              {/each}
-            </div>
-          </div>
 
           <!-- Autocomplete Dropdown List -->
           {#if showDropdown && suggestions.length > 0}
             <ul class="autocomplete-dropdown-list cartoon-card">
               {#each suggestions as item}
                 <li class="dropdown-item">
-                  <button 
-                    type="button" 
-                    onclick={() => selectSuggestion(item)}
-                  >
-                    📍 {item.place_name}
+                  <button type="button" onclick={() => selectSuggestion(item)}>
+                    <Icon name="pin" size={14} /> {item.place_name}
                   </button>
                 </li>
               {/each}
@@ -384,8 +428,14 @@
           {/if}
         </div>
 
-        <button type="submit" class="btn btn-primary w-full" style="margin-top: 10px;" disabled={isSubmitting}>
-          {isSubmitting ? 'Đang tạo kèo...' : 'Lên kèo chơi ngay! 🚀'}
+        <button
+          type="submit"
+          class="btn btn-primary w-full {isSubmitting ? 'btn-loading' : ''}"
+          style="margin-top: 10px;"
+          disabled={isSubmitting}
+        >
+          <Icon name="plus" size={18} />
+          <span>{isSubmitting ? "Đang tạo kèo..." : "Lên kèo chơi ngay!"}</span>
         </button>
       </form>
     </div>
@@ -405,13 +455,6 @@
     text-align: left;
   }
 
-  .form-title {
-    font-size: 1.5rem;
-    margin-bottom: 20px;
-    color: var(--text-dark);
-    text-align: center;
-  }
-
   .meetup-form {
     display: flex;
     flex-direction: column;
@@ -424,13 +467,43 @@
     gap: 6px;
   }
 
+  .form-group-row {
+    display: flex;
+    gap: 12px;
+    width: 100%;
+  }
+
+  .short-field {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .duration-field {
+    flex: 1.5;
+    min-width: 0;
+  }
+
+  @media (max-width: 440px) {
+    .short-inputs-row {
+      flex-wrap: wrap;
+    }
+    .short-field {
+      flex: 1 1 calc(50% - 6px);
+    }
+    .duration-field {
+      flex: 1 1 100%;
+    }
+  }
+
   .form-group label {
     font-weight: 800;
     font-size: 0.95rem;
     color: var(--text-dark);
   }
 
-  .form-group input {
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
     padding: 12px 14px;
     border-radius: var(--radius-md);
     border: var(--border-width) solid var(--color-border);
@@ -443,7 +516,9 @@
     transition: all 0.1s ease;
   }
 
-  .form-group input:focus {
+  .form-group input:focus,
+  .form-group select:focus,
+  .form-group textarea:focus {
     transform: translate(-1px, -1px);
     box-shadow: 3px 3px 0 var(--color-border);
   }
@@ -479,55 +554,6 @@
 
   .location-status-badge.searching {
     color: #eab308; /* yellow */
-  }
-
-  /* Popular preset locations tags styling */
-  .popular-venues-container {
-    margin-top: 4px;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .popular-title {
-    font-size: 0.75rem;
-    font-weight: 800;
-    color: var(--text-muted);
-  }
-
-  .venue-tags {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-  }
-
-  .venue-tag-btn {
-    padding: 4px 10px;
-    font-size: 0.7rem;
-    font-weight: 800;
-    border-radius: 8px;
-    border: var(--border-width-sm) solid var(--color-border);
-    background-color: #fff;
-    box-shadow: 1.5px 1.5px 0 var(--color-border);
-    cursor: pointer;
-    font-family: var(--font-family);
-    transition: all 0.1s ease;
-  }
-
-  .venue-tag-btn:hover:not(:disabled) {
-    transform: translate(-1px, -1px);
-    box-shadow: 2px 2px 0 var(--color-border);
-    background-color: var(--pastel-pink);
-  }
-
-  .venue-tag-btn:active:not(:disabled) {
-    transform: translate(1px, 1px);
-    box-shadow: 0 0 0 var(--color-border);
-  }
-
-  .venue-tag-btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
   }
 
   /* Autocomplete Dropdown List */
@@ -607,10 +633,6 @@
     gap: 10px;
     margin-bottom: 15px;
     color: #92400e;
-  }
-
-  .lock-icon {
-    font-size: 1.8rem;
   }
 
   .w-full {

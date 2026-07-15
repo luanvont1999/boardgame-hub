@@ -1,5 +1,6 @@
 <script lang="ts">
   import { goBack } from '../lib/router.svelte';
+  import Icon from '../lib/Icon.svelte';
 
   interface Props {
     selectedCity: 'all' | 'HCM' | 'HN';
@@ -41,7 +42,7 @@
       ← Quay lại
     </button>
     <div class="nav-title-group">
-      <h2>🔍 Tùy Chỉnh Bộ Lọc Tìm Kiếm</h2>
+      <h2><Icon name="filter" size={22} class="inline-icon" /> Tùy Chỉnh Bộ Lọc Tìm Kiếm</h2>
       <span class="sub-title">Lọc kèo chơi theo thành phố và bán kính vị trí</span>
     </div>
   </div>
@@ -50,15 +51,17 @@
   <div class="cartoon-card filter-content-card">
     <!-- City Selection -->
     <div class="filter-section">
-      <h3 class="section-title-label">🏙️ Chọn Khu Vực Thành Phố:</h3>
+      <h3 class="section-title-label">
+        <Icon name="city" size={20} class="inline-icon" /> Chọn Khu Vực Thành Phố:
+      </h3>
       <div class="options-grid">
         <button 
           type="button" 
           class="option-card-btn {tempCity === 'all' ? 'active' : ''}"
           onclick={() => tempCity = 'all'}
         >
-          <span class="option-icon">🌐</span>
-          <span class="option-name">Tất Cả Các Thành Phố</span>
+          <span class="option-icon"><Icon name="map" size={32} /></span>
+          <span class="option-name">Tất Cả Thành Phố</span>
         </button>
 
         <button 
@@ -66,7 +69,7 @@
           class="option-card-btn {tempCity === 'HCM' ? 'active' : ''}"
           onclick={() => tempCity = 'HCM'}
         >
-          <span class="option-icon">🌆</span>
+          <span class="option-icon"><Icon name="building" size={32} /></span>
           <span class="option-name">TP. Hồ Chí Minh</span>
         </button>
 
@@ -75,7 +78,7 @@
           class="option-card-btn {tempCity === 'HN' ? 'active' : ''}"
           onclick={() => tempCity = 'HN'}
         >
-          <span class="option-icon">🏰</span>
+          <span class="option-icon"><Icon name="landmark" size={32} /></span>
           <span class="option-name">Hà Nội</span>
         </button>
       </div>
@@ -83,14 +86,16 @@
 
     <!-- Distance Selection -->
     <div class="filter-section" style="margin-top: 32px;">
-      <h3 class="section-title-label">📍 Chọn Khoảng Cách Vị Trí (GPS):</h3>
+      <h3 class="section-title-label">
+        <Icon name="gps" size={20} class="inline-icon" /> Chọn Khoảng Cách Vị Trí (GPS):
+      </h3>
       <div class="options-grid">
         <button 
           type="button" 
           class="option-card-btn {tempDistance === 'all' ? 'active' : ''}"
           onclick={() => tempDistance = 'all'}
         >
-          <span class="option-icon">🗺️</span>
+          <span class="option-icon"><Icon name="pin" size={32} /></span>
           <span class="option-name">Mọi Khoảng Cách</span>
         </button>
 
@@ -100,7 +105,7 @@
           disabled={userLat === null}
           onclick={() => tempDistance = '5'}
         >
-          <span class="option-icon">⚡</span>
+          <span class="option-icon"><Icon name="zap" size={32} /></span>
           <span class="option-name">Dưới 5 km</span>
         </button>
 
@@ -110,14 +115,14 @@
           disabled={userLat === null}
           onclick={() => tempDistance = '10'}
         >
-          <span class="option-icon">🚀</span>
+          <span class="option-icon"><Icon name="rocket" size={32} /></span>
           <span class="option-name">Dưới 10 km</span>
         </button>
       </div>
 
       {#if userLat === null}
         <p class="gps-warning-hint">
-          ⚠️ Vui lòng cho phép quyền vị trí (GPS) để bật lọc khoảng cách theo km.
+          <Icon name="alert-triangle" size={16} class="inline-icon" /> Vui lòng cho phép quyền vị trí (GPS) để bật lọc khoảng cách theo km.
         </p>
       {/if}
     </div>
@@ -138,7 +143,7 @@
 
     <div class="apply-action-bar">
       <button type="button" class="btn btn-primary btn-apply-full" onclick={handleApply}>
-        Áp dụng bộ lọc & Xem kết quả 🎯
+        <Icon name="check-circle" size={20} class="inline-icon" /> Áp dụng bộ lọc & Xem kết quả
       </button>
     </div>
   </div>
@@ -174,6 +179,9 @@
     font-size: 1.3rem;
     font-weight: 800;
     margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
 
   .sub-title {
@@ -193,6 +201,9 @@
     font-weight: 800;
     margin-bottom: 16px;
     color: var(--text-dark);
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
 
   .options-grid {
@@ -243,6 +254,9 @@
 
   .option-icon {
     font-size: 2.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .option-name {
@@ -255,6 +269,9 @@
     font-weight: 700;
     color: #dc2626;
     margin-top: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
   }
 
   .gps-status-pill {
@@ -293,5 +310,9 @@
     width: 100%;
     padding: 16px !important;
     font-size: 1.1rem !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
   }
 </style>

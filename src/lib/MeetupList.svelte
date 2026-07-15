@@ -11,6 +11,7 @@
     confirmParticipation,
   } from "./meetupService";
   import { navigate } from "./router.svelte";
+  import Icon from "./Icon.svelte";
 
   interface Meetup {
     id: string;
@@ -31,6 +32,11 @@
     hostFcmToken?: string;
     pendingUids?: string[];
     approvedPendingUids?: string[];
+    approvedUids?: string[];
+    estimatedDuration?: string;
+    duration?: string;
+    notes?: string;
+    description?: string;
   }
 
   // Props — no more callback props for chat/manage/map
@@ -43,6 +49,7 @@
     isTrackingGPS: boolean;
     gpsError: boolean;
     showFilterBar?: boolean;
+    isLoading?: boolean;
   }
 
   let {
@@ -54,11 +61,13 @@
     isTrackingGPS,
     gpsError,
     showFilterBar = true,
+    isLoading = false,
   }: Props = $props();
 
   let currentUser = $state<User | null>(auth.currentUser);
   let unsubscribeAuth: (() => void) | null = null;
-  let isActionProcessing = $state<boolean>(false);
+  // Per-card action loading: tracks which meetup IDs are currently processing
+  let processingMeetupIds = $state<Set<string>>(new Set());
 
   onMount(() => {
     unsubscribeAuth = onAuthStateChanged(auth, (user) => {
@@ -68,53 +77,68 @@
 
   onDestroy(() => {
     if (unsubscribeAuth) unsubscribeAuth();
-  });  async function handleJoinRequest(meetup: Meetup) {
-    if (!currentUser || isActionProcessing) return;
-    isActionProcessing = true;
+  });
+  function isProcessing(meetupId: string): boolean {
+    return processingMeetupIds.has(meetupId);
+  }
+
+  function startProcessing(meetupId: string) {
+    processingMeetupIds = new Set([...processingMeetupIds, meetupId]);
+  }
+
+  function stopProcessing(meetupId: string) {
+    const next = new Set(processingMeetupIds);
+    next.delete(meetupId);
+    processingMeetupIds = next;
+  }
+
+  async function handleJoinRequest(meetup: Meetup) {
+    if (!currentUser || isProcessing(meetup.id)) return;
+    startProcessing(meetup.id);
     try {
       await requestToJoin(meetup.id, currentUser);
     } catch (err) {
       console.error("Request join error:", err);
     } finally {
-      isActionProcessing = false;
+      stopProcessing(meetup.id);
     }
   }
 
   async function handleCancel(meetup: Meetup) {
-    if (!currentUser || isActionProcessing) return;
-    isActionProcessing = true;
+    if (!currentUser || isProcessing(meetup.id)) return;
+    startProcessing(meetup.id);
     try {
       await cancelJoinRequest(meetup.id, currentUser.uid);
     } catch (err) {
       console.error("Cancel request error:", err);
     } finally {
-      isActionProcessing = false;
+      stopProcessing(meetup.id);
     }
   }
 
   async function handleLeave(meetup: Meetup) {
-    if (!currentUser || isActionProcessing) return;
-    isActionProcessing = true;
+    if (!currentUser || isProcessing(meetup.id)) return;
+    startProcessing(meetup.id);
     try {
-      const name = currentUser.displayName || currentUser.email || 'Thành viên';
+      const name = currentUser.displayName || currentUser.email || "Thành viên";
       await kickOrLeaveMember(meetup.id, currentUser.uid, name, false);
     } catch (err) {
       console.error("Leave meetup error:", err);
     } finally {
-      isActionProcessing = false;
+      stopProcessing(meetup.id);
     }
   }
 
   async function handleConfirm(meetup: Meetup) {
-    if (!currentUser || isActionProcessing) return;
-    isActionProcessing = true;
+    if (!currentUser || isProcessing(meetup.id)) return;
+    startProcessing(meetup.id);
     try {
-      const name = currentUser.displayName || currentUser.email || 'Thành viên';
+      const name = currentUser.displayName || currentUser.email || "Thành viên";
       await confirmParticipation(meetup.id, currentUser.uid, name);
     } catch (err) {
       console.error("Confirm participation error:", err);
     } finally {
-      isActionProcessing = false;
+      stopProcessing(meetup.id);
     }
   }
 
@@ -184,14 +208,14 @@
     <div class="cartoon-card filter-trigger-card">
       <div class="filter-trigger-info">
         <div class="filter-trigger-header">
-          <span class="filter-title-icon">🎲</span>
+          <Icon name="dice" size={24} class="filter-title-icon" />
           <h3>Danh Sách Kèo Chơi Boardgame</h3>
         </div>
 
         <!-- Active Filter Badges -->
         <div class="active-filter-badges">
           <span class="badge-chip">
-            📍 Khu vực: <strong
+            <Icon name="pin" size={14} /> Khu vực: <strong
               >{selectedCity === "all"
                 ? "Tất cả"
                 : selectedCity === "HCM"
@@ -200,14 +224,16 @@
             >
           </span>
           <span class="badge-chip">
-            📏 Khoảng cách: <strong
+            <Icon name="distance" size={14} /> Khoảng cách: <strong
               >{selectedDistance === "all"
                 ? "Mọi khoảng cách"
                 : `< ${selectedDistance} km`}</strong
             >
           </span>
           {#if userLat !== null}
-            <span class="badge-chip gps-on-chip"> 🎯 GPS Bật </span>
+            <span class="badge-chip gps-on-chip">
+              <Icon name="gps" size={14} /> GPS Bật
+            </span>
           {/if}
         </div>
       </div>
@@ -217,7 +243,8 @@
         class="btn btn-primary filter-trigger-btn"
         onclick={openFilter}
       >
-        🔍 Bộ Lọc Tìm Kiếm ⚙️
+        <Icon name="search" size={16} />
+        <span>Bộ Lọc Tìm Kiếm</span>
       </button>
     </div>
   {/if}
@@ -225,7 +252,28 @@
   <!-- Meetups Cards Grid -->
 
   <div class="meetup-cards-grid">
-    {#if meetups.length === 0}
+    {#if isLoading}
+      <!-- Skeleton Cards Placeholder -->
+      {#each [1, 2, 3] as _}
+        <div class="skeleton-card">
+          <div class="skeleton-badges">
+            <div class="skeleton skeleton-badge"></div>
+            <div class="skeleton skeleton-badge" style="width: 100px;"></div>
+          </div>
+          <div class="skeleton skeleton-title"></div>
+          <div class="skeleton-details">
+            <div class="skeleton skeleton-line long"></div>
+            <div class="skeleton skeleton-line medium"></div>
+            <div class="skeleton skeleton-line medium"></div>
+            <div class="skeleton skeleton-line short"></div>
+          </div>
+          <div class="skeleton-actions">
+            <div class="skeleton skeleton-btn" style="flex: 1;"></div>
+            <div class="skeleton skeleton-btn" style="flex: 1;"></div>
+          </div>
+        </div>
+      {/each}
+    {:else if meetups.length === 0}
       <div class="cartoon-card no-meetup-card">
         <h3>Không tìm thấy kèo chơi nào phù hợp! 😢</h3>
         <p>Thử đổi bộ lọc hoặc nhấp chuột lên bản đồ để tự lên kèo mới nhé!</p>
@@ -245,6 +293,11 @@
         {@const userIsApprovedPending =
           Array.isArray(meetup.approvedPendingUids) &&
           meetup.approvedPendingUids.includes(currentUser?.uid || "")}
+        {@const approvedCount = Array.isArray(meetup.approvedUids) ? meetup.approvedUids.length : 0}
+        {@const currentCount = approvedCount > 0 ? approvedCount : (meetup.playersCount || meetup.players_count || 1)}
+        {@const totalCapacity = meetup.playersNeeded || meetup.players_needed || 4}
+        {@const duration = meetup.estimatedDuration || meetup.duration || "2 - 3 tiếng"}
+        {@const notesText = meetup.notes || meetup.description || ""}
 
         <div
           class="cartoon-card meetup-item-card"
@@ -255,24 +308,35 @@
             <span
               class="city-badge {city === 'HCM' ? 'hcm-color' : 'hn-color'}"
             >
-              {city === 'HCM' ? '🌆 HCM' : '🏰 HN'}
+              <Icon name={city === 'HCM' ? 'building' : 'landmark'} size={13} />
+              <span>{city === "HCM" ? "HCM" : "HN"}</span>
             </span>
             {#if distance !== null}
               <span class="distance-badge">
-                📍 Cách {distance.toFixed(1)} km
+                <Icon name="pin" size={13} /> Cách {distance.toFixed(1)} km
               </span>
             {/if}
             {#if userIsHost}
-              <span class="membership-badge host-tag">👑 Host</span>
+              <span class="membership-badge host-tag">
+                <Icon name="crown" size={13} /> Host
+              </span>
               {#if Array.isArray(meetup.pendingUids) && meetup.pendingUids.length > 0}
-                <span class="membership-badge pending-alert-tag">🔔 {meetup.pendingUids.length} mới</span>
+                <span class="membership-badge pending-alert-tag">
+                  <Icon name="bell" size={13} /> {meetup.pendingUids.length} mới
+                </span>
               {/if}
             {:else if userIsMember}
-              <span class="membership-badge member-tag">✅ Đã tham gia</span>
+              <span class="membership-badge member-tag">
+                <Icon name="check-circle" size={13} /> Đã tham gia
+              </span>
             {:else if userIsApprovedPending}
-              <span class="membership-badge approved-pending-tag pulsing-badge">🎉 Được duyệt</span>
+              <span class="membership-badge approved-pending-tag pulsing-badge">
+                <Icon name="sparkles" size={13} /> Được duyệt
+              </span>
             {:else if userIsPending}
-              <span class="membership-badge pending-tag">⏳ Chờ duyệt</span>
+              <span class="membership-badge pending-tag">
+                <Icon name="clock" size={13} /> Chờ duyệt
+              </span>
             {/if}
           </div>
 
@@ -280,39 +344,41 @@
 
           <div class="meetup-card-details">
             <div class="detail-row">
-              <span class="detail-icon">🎲</span>
+              <span class="detail-icon"><Icon name="dice" size={16} /></span>
               <span>Game: <strong>{meetup.game}</strong></span>
             </div>
             <div class="detail-row">
-              <span class="detail-icon">⏰</span>
+              <span class="detail-icon"><Icon name="calendar" size={16} /></span>
               <span>Lịch: <strong>{formatTime(meetup.time)}</strong></span>
             </div>
             <div class="detail-row">
-              <span class="detail-icon">👥</span>
-              <span
-                >Sĩ số: <strong
-                  >{meetup.players_count || meetup.playersCount || 1} / {meetup.players_needed ||
-                    meetup.playersNeeded ||
-                    4} người</strong
-                ></span
-              >
+              <span class="detail-icon"><Icon name="clock" size={16} /></span>
+              <span>Dự kiến: <strong>{duration}</strong></span>
             </div>
             <div class="detail-row">
-              <span class="detail-icon">👤</span>
-              <span
-                >Host: <strong
-                  >{meetup.host_name || meetup.hostName || "Ẩn danh"}</strong
-                ></span
-              >
+              <span class="detail-icon"><Icon name="users" size={16} /></span>
+              <span>Sĩ số: <strong>{currentCount} / {totalCapacity} người</strong></span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-icon"><Icon name="user" size={16} /></span>
+              <span>Host: <strong>{meetup.host_name || meetup.hostName || "Ẩn danh"}</strong></span>
             </div>
           </div>
+
+          {#if notesText}
+            <div class="meetup-notes-box">
+              <Icon name="file-text" size={14} />
+              <span>{notesText}</span>
+            </div>
+          {/if}
 
           <div class="card-action-row">
             <button
               class="btn btn-secondary action-btn"
               onclick={() => navigate({ name: "map", mode: "discover" })}
             >
-              Vị trí 🗺️
+              <Icon name="map" size={15} />
+              <span>Vị trí</span>
             </button>
 
             {#if userIsMember}
@@ -320,58 +386,84 @@
                 class="btn btn-primary action-btn"
                 onclick={() => navigate({ name: "chat", meetupId: meetup.id })}
               >
-                Chat 💬
+                <Icon name="chat" size={15} />
+                <span>Chat</span>
               </button>
             {/if}
 
             {#if userIsHost}
               <button
                 class="btn btn-success action-btn"
-                onclick={() => navigate({ name: "manage", meetupId: meetup.id })}
+                onclick={() =>
+                  navigate({ name: "manage", meetupId: meetup.id })}
               >
-                Duyệt 👥
+                <Icon name="users" size={15} />
+                <span>Duyệt</span>
                 {#if Array.isArray(meetup.pendingUids) && meetup.pendingUids.length > 0}
                   <span class="btn-alert-dot"></span>
                 {/if}
               </button>
             {:else if userIsMember}
               <button
-                class="btn btn-secondary action-btn leave-btn"
+                class="btn btn-secondary action-btn leave-btn {isProcessing(
+                  meetup.id,
+                )
+                  ? 'btn-loading'
+                  : ''}"
                 onclick={() => handleLeave(meetup)}
-                disabled={isActionProcessing}
+                disabled={isProcessing(meetup.id)}
               >
-                Rời 🚪
+                <Icon name="log-out" size={15} />
+                <span>Rời</span>
               </button>
             {:else if userIsApprovedPending}
               <button
-                class="btn btn-warning action-btn pulse-button"
+                class="btn btn-warning action-btn pulse-button {isProcessing(
+                  meetup.id,
+                )
+                  ? 'btn-loading'
+                  : ''}"
                 onclick={() => handleConfirm(meetup)}
-                disabled={isActionProcessing}
+                disabled={isProcessing(meetup.id)}
               >
-                {isActionProcessing ? "..." : "Xác nhận 🤝"}
+                <Icon name="check-circle" size={15} />
+                <span>Xác nhận</span>
               </button>
               <button
-                class="btn btn-secondary action-btn cancel-btn"
+                class="btn btn-secondary action-btn cancel-btn {isProcessing(
+                  meetup.id,
+                )
+                  ? 'btn-loading'
+                  : ''}"
                 onclick={() => handleCancel(meetup)}
-                disabled={isActionProcessing}
+                disabled={isProcessing(meetup.id)}
               >
-                Từ chối ✕
+                <Icon name="x" size={15} />
+                <span>Từ chối</span>
               </button>
             {:else if userIsPending}
               <button
-                class="btn btn-secondary action-btn cancel-btn"
+                class="btn btn-secondary action-btn cancel-btn {isProcessing(
+                  meetup.id,
+                )
+                  ? 'btn-loading'
+                  : ''}"
                 onclick={() => handleCancel(meetup)}
-                disabled={isActionProcessing}
+                disabled={isProcessing(meetup.id)}
               >
-                {isActionProcessing ? "..." : "Hủy ✕"}
+                <Icon name="x" size={15} />
+                <span>Hủy</span>
               </button>
             {:else if currentUser}
               <button
-                class="btn btn-success action-btn"
+                class="btn btn-success action-btn {isProcessing(meetup.id)
+                  ? 'btn-loading'
+                  : ''}"
                 onclick={() => handleJoinRequest(meetup)}
-                disabled={isActionProcessing}
+                disabled={isProcessing(meetup.id)}
               >
-                {isActionProcessing ? "..." : "Xin vào 🤝"}
+                <Icon name="handshake" size={15} />
+                <span>Xin vào</span>
               </button>
             {/if}
           </div>
@@ -384,10 +476,9 @@
 <style>
   .meetup-list-container {
     width: 100%;
-    margin-top: 24px;
     display: flex;
     flex-direction: column;
-    gap: 32px;
+    gap: 20px;
   }
 
   .filter-trigger-card {
@@ -546,6 +637,30 @@
 
   .detail-icon {
     font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+  }
+
+  .meetup-notes-box {
+    width: 100%;
+    margin: 12px 0 16px 0;
+    padding: 10px 12px;
+    background-color: var(--pastel-yellow, #ffe869);
+    border: var(--border-width-sm) solid var(--color-border);
+    border-radius: var(--radius-md);
+    box-shadow: 2px 2px 0 var(--color-border);
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-dark);
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    line-height: 1.4;
+  }
+
+  .meetup-notes-box span {
+    flex: 1;
+    word-break: break-word;
   }
 
   .card-action-row {
@@ -610,14 +725,27 @@
   }
 
   @keyframes pulse-red {
-    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-    70% { transform: scale(1); box-shadow: 0 0 0 4px rgba(239, 68, 68, 0); }
-    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+    0% {
+      transform: scale(0.95);
+      box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+    }
+    70% {
+      transform: scale(1);
+      box-shadow: 0 0 0 4px rgba(239, 68, 68, 0);
+    }
+    100% {
+      transform: scale(0.95);
+      box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+    }
   }
 
   @keyframes wiggle {
-    0% { transform: rotate(-2deg); }
-    100% { transform: rotate(2deg); }
+    0% {
+      transform: rotate(-2deg);
+    }
+    100% {
+      transform: rotate(2deg);
+    }
   }
 
   .approved-pending-tag {

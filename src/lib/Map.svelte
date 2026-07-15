@@ -182,9 +182,7 @@
       </div>
     `;
 
-    tempMarker = new mapboxgl.Marker(el)
-      .setLngLat([lng, lat])
-      .addTo(map);
+    tempMarker = new mapboxgl.Marker(el).setLngLat([lng, lat]).addTo(map);
   }
 
   export function flyToMeetup(meetup: Meetup) {
@@ -447,7 +445,9 @@
     cursor: pointer;
     box-shadow: 2px 2px 0 #1e1e24;
     /* Limit transition properties to prevent lag in map coordinates positioning update */
-    transition: background-color 0.15s ease-out, box-shadow 0.15s ease-out;
+    transition:
+      background-color 0.15s ease-out,
+      box-shadow 0.15s ease-out;
   }
 
   :global(.custom-meeple-marker:hover) {

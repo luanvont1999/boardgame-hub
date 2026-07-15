@@ -10,6 +10,7 @@
     type User,
   } from "firebase/auth";
   import { auth, googleProvider } from "./firebase";
+  import Icon from "./Icon.svelte";
 
   // Svelte 5 State Runes
   let user = $state<User | null>(null);
@@ -135,7 +136,7 @@
   {#if isConfigMissing}
     <div class="cartoon-card warning-card">
       <div class="warning-header">
-        <span class="warning-icon">⚠️</span>
+        <Icon name="alert-triangle" size={24} />
         <h3>Firebase Chưa Được Cấu Hình!</h3>
       </div>
       <p>
@@ -166,9 +167,16 @@ VITE_FIREBASE_APP_ID=YOUR_APP_ID</code
   {/if}
 
   {#if isLoading}
-    <div class="loading-state">
-      <div class="spinner"></div>
-      <p>Đang kiểm tra thông tin tài khoản...</p>
+    <!-- Skeleton Auth Card -->
+    <div class="cartoon-card profile-card skeleton-auth-card">
+      <div class="profile-header">
+        <div class="skeleton profile-avatar-placeholder"></div>
+        <div class="skeleton-auth-info">
+          <div class="skeleton skeleton-line long"></div>
+          <div class="skeleton skeleton-line medium"></div>
+        </div>
+      </div>
+      <div class="skeleton skeleton-btn" style="width: 160px; height: 42px;"></div>
     </div>
   {:else if user}
     <!-- Logged In Profile UI -->
@@ -257,14 +265,19 @@ VITE_FIREBASE_APP_ID=YOUR_APP_ID</code
 
         <button
           type="submit"
-          class="btn btn-primary w-full"
+          class="btn btn-primary w-full {isSubmitting ? 'btn-loading' : ''}"
           disabled={isSubmitting}
         >
-          {isSubmitting
-            ? "Đang xử lý..."
-            : isLoginMode
-              ? "Đăng nhập ngay 🚀"
-              : "Đăng ký tài khoản 🎉"}
+          {#if !isSubmitting}
+            <Icon name={isLoginMode ? "key" : "sparkles"} size={18} class="inline-icon" />
+          {/if}
+          <span>
+            {isSubmitting
+              ? "Đang xử lý..."
+              : isLoginMode
+                ? "Đăng nhập ngay"
+                : "Đăng ký tài khoản"}
+          </span>
         </button>
       </form>
 
@@ -273,7 +286,7 @@ VITE_FIREBASE_APP_ID=YOUR_APP_ID</code
       </div>
 
       <button
-        class="btn btn-google w-full"
+        class="btn btn-google w-full {isSubmitting ? 'btn-loading' : ''}"
         onclick={handleGoogleLogin}
         disabled={isSubmitting}
       >
@@ -305,7 +318,7 @@ VITE_FIREBASE_APP_ID=YOUR_APP_ID</code
   .auth-wrapper {
     width: 100%;
     max-width: 520px;
-    margin: 0 auto 40px;
+    margin: 0 auto 20px;
   }
 
   /* Warning config card */
@@ -322,10 +335,6 @@ VITE_FIREBASE_APP_ID=YOUR_APP_ID</code
     gap: 10px;
     margin-bottom: 12px;
     color: #b91c1c;
-  }
-
-  .warning-icon {
-    font-size: 1.5rem;
   }
 
   .warning-card pre {
@@ -384,49 +393,17 @@ VITE_FIREBASE_APP_ID=YOUR_APP_ID</code
     font-weight: 500;
   }
 
-  /* Token Display styling */
-  .token-container {
-    background-color: var(--bg-secondary);
-    border: var(--border-width) solid var(--color-border);
-    border-radius: var(--radius-md);
-    padding: 16px;
-    margin-bottom: 20px;
+  /* Skeleton Auth Card */
+  .skeleton-auth-card .profile-avatar-placeholder {
+    background-color: transparent;
+    border-color: #e8e2d6;
   }
 
-  .token-title {
+  .skeleton-auth-info {
+    flex: 1;
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-weight: 700;
-    margin-bottom: 10px;
-  }
-
-  .btn-copy {
-    padding: 4px 12px;
-    font-size: 0.8rem;
-    border-radius: var(--radius-sm);
-    background-color: var(--pastel-cyan);
-    box-shadow: 2px 2px 0 var(--color-border);
-  }
-
-  .token-textarea {
-    width: 100%;
-    height: 80px;
-    border: var(--border-width-sm) solid var(--color-border);
-    border-radius: var(--radius-sm);
-    padding: 8px;
-    font-family: monospace;
-    font-size: 0.75rem;
-    resize: none;
-    background-color: #1e2022;
-    color: #a4f0fd;
-  }
-
-  .token-tip {
-    font-size: 0.8rem;
-    color: var(--text-muted);
-    margin-top: 8px;
-    font-weight: 500;
+    flex-direction: column;
+    gap: 8px;
   }
 
   /* Form & Tabs styling */
@@ -550,32 +527,5 @@ VITE_FIREBASE_APP_ID=YOUR_APP_ID</code
     background-color: #d1fae5;
     color: #065f46;
   }
-
-  /* Loading State */
-  .loading-state {
-    padding: 40px;
-    text-align: center;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 16px;
-  }
-
-  .spinner {
-    width: 40px;
-    height: 40px;
-    border: 4px solid var(--bg-secondary);
-    border-top: 4px solid var(--pastel-purple);
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-  }
-
-  @keyframes spin {
-    0% {
-      transform: rotate(0deg);
-    }
-    100% {
-      transform: rotate(360deg);
-    }
-  }
 </style>
+

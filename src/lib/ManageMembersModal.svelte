@@ -7,6 +7,7 @@
     kickOrLeaveMember, 
     type MeetupRequest 
   } from './meetupService';
+  import Icon from './Icon.svelte';
 
   interface Meetup {
     id: string;
@@ -117,25 +118,25 @@
     <div class="cartoon-card cartoon-modal-content manage-modal-box">
       <div class="modal-header manage-modal-header">
         <div class="manage-header-title">
-          <span>👥 Quản Lý Thành Viên Kèo</span>
+          <span><Icon name="users" size={16} class="inline-icon" /> Quản Lý Thành Viên Kèo</span>
           <h3>{meetup.title}</h3>
         </div>
-        <button type="button" class="btn btn-close-modal" onclick={onClose}>✕</button>
+        <button type="button" class="btn btn-close-modal" onclick={onClose}><Icon name="x" size={16} /></button>
       </div>
 
       <div class="modal-body manage-modal-body">
         <!-- Host info banner -->
         <div class="host-summary-pill">
-          <span>👑 Host kèo: <strong>{meetup.hostName || meetup.host_name || 'Ẩn danh'}</strong></span>
+          <span><Icon name="crown" size={15} class="inline-icon" /> Host kèo: <strong>{meetup.hostName || meetup.host_name || 'Ẩn danh'}</strong></span>
           <span class="count-tag">
-            👥 Sĩ số: {meetup.playersCount || meetup.players_count || 1} / {meetup.playersNeeded || meetup.players_needed || 4}
+            <Icon name="users" size={13} class="inline-icon" /> {meetup.playersCount || meetup.players_count || 1} / {meetup.playersNeeded || meetup.players_needed || 4}
           </span>
         </div>
 
         <!-- Section 1: Yêu cầu tham gia mới (Pending) -->
         <div class="members-section">
           <h4 class="section-heading">
-            ⏳ Yêu cầu mới cần xét duyệt ({pendingRequests.length}):
+            <Icon name="clock" size={16} class="inline-icon" /> Yêu cầu mới cần xét duyệt ({pendingRequests.length}):
           </h4>
 
           {#if pendingRequests.length === 0}
@@ -145,7 +146,7 @@
               {#each pendingRequests as req (req.uid)}
                 <div class="member-card pending-card">
                   <div class="member-info">
-                    <span class="member-avatar">👤</span>
+                    <span class="member-avatar"><Icon name="user" size={16} /></span>
                     <span class="member-name">{req.name}</span>
                   </div>
 
@@ -155,14 +156,14 @@
                       onclick={() => handleApprove(req.uid)}
                       disabled={isProcessing}
                     >
-                      Duyệt ✅
+                      <Icon name="check" size={12} class="inline-icon" /> Duyệt
                     </button>
                     <button 
                       class="btn btn-secondary btn-sm" 
                       onclick={() => handleReject(req.uid)}
                       disabled={isProcessing}
                     >
-                      Từ chối ❌
+                      <Icon name="x" size={12} class="inline-icon" /> Từ chối
                     </button>
                   </div>
                 </div>
@@ -174,7 +175,7 @@
         <!-- Section 2: Thành viên đã tham gia (Approved) -->
         <div class="members-section" style="margin-top: 24px;">
           <h4 class="section-heading">
-            ✅ Thành viên trong kèo ({approvedRequests.length}):
+            <Icon name="check-circle" size={16} class="inline-icon" /> Thành viên trong kèo ({approvedRequests.length}):
           </h4>
 
           {#if approvedRequests.length === 0}
@@ -184,7 +185,7 @@
               {#each approvedRequests as req (req.uid)}
                 <div class="member-card approved-card">
                   <div class="member-info">
-                    <span class="member-avatar">🎲</span>
+                    <span class="member-avatar"><Icon name="user" size={16} /></span>
                     <span class="member-name">{req.name}</span>
                   </div>
 
@@ -193,7 +194,7 @@
                     onclick={() => handleKick(req.uid)}
                     disabled={isProcessing}
                   >
-                    Đuổi khỏi kèo 🚪
+                    <Icon name="log-out" size={12} class="inline-icon" /> Đuổi khỏi kèo
                   </button>
                 </div>
               {/each}
@@ -203,7 +204,9 @@
       </div>
 
       <div class="modal-footer">
-        <span class="modal-footer-tip">💡 Host có quyền xét duyệt hoặc đuổi thành viên khỏi kèo bất cứ lúc nào.</span>
+        <span class="modal-footer-tip">
+          <Icon name="sparkles" size={14} class="inline-icon" /> Host có quyền xét duyệt hoặc đuổi thành viên khỏi kèo bất cứ lúc nào.
+        </span>
         <button type="button" class="btn btn-primary" onclick={onClose}>Đóng bảng quản lý</button>
       </div>
     </div>
@@ -230,6 +233,9 @@
     font-size: 0.8rem;
     font-weight: 800;
     color: var(--text-dark);
+    display: flex;
+    align-items: center;
+    gap: 4px;
   }
 
   .manage-header-title h3 {
@@ -263,6 +269,9 @@
     padding: 2px 8px;
     border: 1.5px solid var(--color-border);
     border-radius: 100px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
   }
 
   .section-heading {
@@ -270,6 +279,9 @@
     font-weight: 800;
     margin-bottom: 10px;
     color: var(--text-dark);
+    display: flex;
+    align-items: center;
+    gap: 6px;
   }
 
   .empty-list-hint {
@@ -303,7 +315,9 @@
   }
 
   .member-avatar {
-    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .member-name {
@@ -320,6 +334,9 @@
     padding: 6px 12px !important;
     font-size: 0.82rem !important;
     border-radius: var(--radius-sm) !important;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
   }
 
   .btn-kick {

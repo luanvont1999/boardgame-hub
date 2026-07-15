@@ -2,7 +2,7 @@ import { doc, setDoc, collection, getDocs } from 'firebase/firestore';
 import { getToken, onMessage } from 'firebase/messaging';
 import { db, messaging } from './firebase';
 
-const VAPID_KEY = 'BOayFhwLtc6meaJahL6iQrROj-cyCKc344znz7SdDeMFCJCTvSK4PBhOzZpqmJ_Sa-phn2FRTOL_J8KlFSleEMo';
+const VAPID_KEY = import.meta.env.VITE_FIREBASE_VAPID_KEY || '';
 
 /**
  * Xin quyền thông báo đẩy và lấy FCM Token của thiết bị.

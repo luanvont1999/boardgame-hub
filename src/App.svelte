@@ -22,6 +22,7 @@
   import FilterRoute from "./routes/FilterRoute.svelte";
   import ChatRoute from "./routes/ChatRoute.svelte";
   import ManageRoute from "./routes/ManageRoute.svelte";
+  import Icon from "./lib/Icon.svelte";
 
   // ── Global App State ──────────────────────────────────────────────────────
   let allMeetups = $state<any[]>([]);
@@ -198,8 +199,12 @@
         } else {
           allMeetups = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
         }
+        hasLoadedInitialMeetups = true;
       },
-      (err) => console.error("[Firestore] meetups error:", err),
+      (err) => {
+        console.error("[Firestore] meetups error:", err);
+        hasLoadedInitialMeetups = true;
+      },
     );
   }
 
@@ -231,21 +236,20 @@
 
   // ── Lifecycle ─────────────────────────────────────────────────────────────
   let prevPendingCount = 0;
-  let hasLoadedInitialMeetups = false;
+  let hasLoadedInitialMeetups = $state(false);
+  let isMeetupsLoading = $derived(!hasLoadedInitialMeetups);
 
   $effect(() => {
     // Đánh dấu đã load xong dữ liệu ban đầu khi allMeetups không còn rỗng
     if (allMeetups.length > 0 && !hasLoadedInitialMeetups) {
-      setTimeout(() => {
-        prevPendingCount = totalPendingRequests;
-        hasLoadedInitialMeetups = true;
-      }, 500);
+      hasLoadedInitialMeetups = true;
+      prevPendingCount = totalPendingRequests;
       return;
     }
 
     if (hasLoadedInitialMeetups && totalPendingRequests > prevPendingCount) {
       const diff = totalPendingRequests - prevPendingCount;
-      addToast(`🔔 Bạn có ${diff} yêu cầu tham gia kèo mới đang chờ duyệt!`, "info");
+      addToast(`Bạn có ${diff} yêu cầu tham gia kèo mới đang chờ duyệt!`, "info");
     }
 
     if (hasLoadedInitialMeetups) {
@@ -304,7 +308,7 @@
 
     window.addEventListener('appinstalled', () => {
       deferredPrompt = null;
-      addToast("🎉 Cài đặt ứng dụng thành công!", "success");
+      addToast("Cài đặt ứng dụng thành công!", "success");
     });
 
     if ('serviceWorker' in navigator) {
@@ -321,7 +325,7 @@
         initNotifications(user.uid, (payload) => {
           const title = payload.notification?.title || "Thông báo mới";
           const body = payload.notification?.body || "";
-          addToast(`🔔 ${title}: ${body}`, "info");
+          addToast(`${title}: ${body}`, "info");
 
           // Hiển thị thông báo hệ thống (system notification banner) ở chế độ Foreground
           if (Notification.permission === 'granted') {
@@ -461,8 +465,9 @@
 
     <div class="desktop-nav-btn" style="display: flex; gap: 10px;">
       {#if deferredPrompt || (isIOS && !isStandalone)}
-        <button class="btn btn-primary" style="background-color: var(--pastel-yellow, #ffe869) !important; color: #1e1e24 !important;" onclick={triggerPWAInstall}>
-          Tải App 📲
+        <button class="btn btn-primary" style="background-color: var(--pastel-yellow, #ffe869) !important; color: #1e1e24 !important; display: inline-flex; align-items: center; gap: 6px;" onclick={triggerPWAInstall}>
+          <Icon name="smartphone" size={16} />
+          <span>Tải App</span>
         </button>
       {/if}
       <button class="btn btn-primary" onclick={() => navigateToTab("profile")}
@@ -477,7 +482,7 @@
   <div class="container" style="margin-top: 15px; margin-bottom: -10px;">
     <div class="cartoon-card install-banner">
       <div class="install-banner-content">
-        <span class="install-banner-icon">📲</span>
+        <span class="install-banner-icon"><Icon name="smartphone" size={24} /></span>
         <div class="install-banner-text">
           <strong>Cài đặt Boardgame Luna!</strong>
           <span>Tải app về màn hình chính để nhận thông báo đẩy nhanh hơn.</span>
@@ -502,6 +507,7 @@
       {userLng}
       {isTrackingGPS}
       {gpsError}
+      isLoading={isMeetupsLoading}
     />
   {:else if route.name === "create"}
     <CreateRoute
@@ -529,6 +535,7 @@
       {isTrackingGPS}
       {gpsError}
       {addToast}
+      isLoading={isMeetupsLoading}
     />
   {:else if route.name === "map"}
     <MapRoute
@@ -559,7 +566,7 @@
   {#each toasts as toast (toast.id)}
     <div class="cartoon-card toast-item {toast.type}">
       <span class="toast-message">{toast.message}</span>
-      <button class="toast-close-btn" onclick={() => toasts = toasts.filter((t) => t.id !== toast.id)}>✕</button>
+      <button class="toast-close-btn" onclick={() => toasts = toasts.filter((t) => t.id !== toast.id)}><Icon name="x" size={14} /></button>
     </div>
   {/each}
 </div>
@@ -822,18 +829,25 @@
   <div class="ios-modal-backdrop">
     <div class="cartoon-card ios-instructions-modal">
       <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #1e1e24; padding-bottom: 12px; margin-bottom: 15px;">
-        <h3 style="margin: 0; font-size: 1.2rem; font-weight: 800; color: #1e1e24;">Cài đặt trên iPhone/iPad 📲</h3>
-        <button style="background: none; border: none; font-size: 1.5rem; font-weight: 800; cursor: pointer; color: #1e1e24;" onclick={() => showIOSInstallInstructions = false}>✕</button>
+        <h3 style="margin: 0; font-size: 1.2rem; font-weight: 800; color: #1e1e24; display: flex; align-items: center; gap: 8px;">
+          <Icon name="smartphone" size={20} /> Cài đặt trên iPhone/iPad
+        </h3>
+        <button style="background: none; border: none; cursor: pointer; color: #1e1e24; padding: 4px;" onclick={() => showIOSInstallInstructions = false}>
+          <Icon name="x" size={20} />
+        </button>
       </div>
       <p style="font-size: 0.95rem; line-height: 1.5; color: #1e1e24; margin-bottom: 15px; text-align: left;">
         Trình duyệt Safari trên iOS không hỗ trợ tự động cài đặt. Hãy làm theo 3 bước đơn giản:
       </p>
       <ol style="font-size: 0.9rem; line-height: 1.6; color: #1e1e24; padding-left: 20px; margin-bottom: 20px; text-align: left;">
-        <li style="margin-bottom: 8px;">Nhấn vào biểu tượng <strong>Chia sẻ (Share)</strong> <span style="font-size: 1.1rem; vertical-align: middle;">📤</span> trên Safari.</li>
-        <li style="margin-bottom: 8px;">Cuộn xuống và chọn <strong>Thêm vào MH chính (Add to Home Screen)</strong> <span style="font-size: 1.1rem; vertical-align: middle;">➕</span>.</li>
+        <li style="margin-bottom: 8px;">Nhấn vào biểu tượng <strong>Chia sẻ (Share)</strong> trên Safari.</li>
+        <li style="margin-bottom: 8px;">Cuộn xuống và chọn <strong>Thêm vào MH chính (Add to Home Screen)</strong>.</li>
         <li>Bấm <strong>Thêm (Add)</strong> ở góc trên bên phải để hoàn tất!</li>
       </ol>
-      <button class="btn btn-primary" style="width: 100%; padding: 10px;" onclick={() => showIOSInstallInstructions = false}>Đã hiểu 👍</button>
+      <button class="btn btn-primary" style="width: 100%; padding: 10px; display: inline-flex; align-items: center; justify-content: center; gap: 6px;" onclick={() => showIOSInstallInstructions = false}>
+        <Icon name="check" size={18} />
+        <span>Đã hiểu</span>
+      </button>
     </div>
   </div>
 {/if}

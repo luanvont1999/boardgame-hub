@@ -11,6 +11,7 @@
     subscribeToMeetupRequests, type MeetupRequest 
   } from '../lib/meetupService';
   import { goBack, navigateToTab } from '../lib/router.svelte';
+  import Icon from '../lib/Icon.svelte';
 
   interface Meetup {
     id: string;
@@ -129,7 +130,7 @@
 <div class="fullscreen-chat-view">
   {#if !meetup}
     <div class="cartoon-card no-chat-card">
-      <h3>Chưa chọn kèo chơi nào! 😢</h3>
+      <h3>Chưa chọn kèo chơi nào!</h3>
       <button class="btn btn-primary" onclick={() => navigateToTab('find')}>Quay lại danh sách kèo</button>
     </div>
 
@@ -140,33 +141,39 @@
       <div class="chat-nav-details">
         <div class="chat-title-row">
           <h2 class="chat-meetup-title">{meetup.title}</h2>
-          <span class="game-badge">🎲 {meetup.game}</span>
+          <span class="game-badge"><Icon name="dice" size={13} class="inline-icon" /> {meetup.game}</span>
         </div>
-        <span class="host-info">👑 Host: <strong>{meetup.host_name || meetup.hostName || 'Ẩn danh'}</strong></span>
+        <span class="host-info"><Icon name="crown" size={13} class="inline-icon" /> Host: <strong>{meetup.host_name || meetup.hostName || 'Ẩn danh'}</strong></span>
       </div>
     </div>
 
     <!-- Access Denied -->
     <div class="cartoon-card access-denied-card">
-      <span class="lock-big-icon">🔒</span>
+      <div class="lock-big-icon">
+        <Icon name="lock" size={48} />
+      </div>
       <h3>Phòng Chat Riêng Tư</h3>
       <p>Chỉ những người chơi đã được Host phê duyệt vào kèo mới có quyền xem và nhắn tin trong phòng chat này.</p>
       <div class="access-action-box">
         {#if !currentUser}
-          <p>💡 Hãy đăng nhập ở tab <strong>Hồ sơ</strong> để gửi yêu cầu tham gia kèo.</p>
+          <p><Icon name="sparkles" size={16} class="inline-icon" /> Hãy đăng nhập ở tab <strong>Hồ sơ</strong> để gửi yêu cầu tham gia kèo.</p>
           <button class="btn btn-primary" onclick={goBack}>Quay lại danh sách kèo</button>
         {:else if myRequest?.status === 'pending'}
-          <div class="pending-status-pill">⏳ Yêu cầu của bạn đang chờ Host xét duyệt...</div>
+          <div class="pending-status-pill">
+            <Icon name="clock" size={16} class="inline-icon" /> Yêu cầu của bạn đang chờ Host xét duyệt...
+          </div>
           <div class="action-btn-group">
             <button class="btn btn-secondary" onclick={handleCancelRequest} disabled={isRequesting}>
-              {isRequesting ? '...' : 'Hủy yêu cầu ✖'}
+              <Icon name="x" size={16} class="inline-icon" />
+              <span>{isRequesting ? '...' : 'Hủy yêu cầu'}</span>
             </button>
             <button class="btn btn-primary" onclick={goBack}>Quay lại danh sách</button>
           </div>
         {:else}
           <div class="action-btn-group">
             <button class="btn btn-success" onclick={handleSendJoinRequest} disabled={isRequesting}>
-              {isRequesting ? 'Đang gửi...' : 'Gửi yêu cầu tham gia kèo 🤝'}
+              <Icon name="handshake" size={16} class="inline-icon" />
+              <span>{isRequesting ? 'Đang gửi...' : 'Gửi yêu cầu tham gia kèo'}</span>
             </button>
             <button class="btn btn-primary" onclick={goBack}>Quay lại danh sách</button>
           </div>
@@ -181,9 +188,9 @@
       <div class="chat-nav-details">
         <div class="chat-title-row">
           <h2 class="chat-meetup-title">{meetup.title}</h2>
-          <span class="game-badge">🎲 {meetup.game}</span>
+          <span class="game-badge"><Icon name="dice" size={13} class="inline-icon" /> {meetup.game}</span>
         </div>
-        <span class="host-info">👑 Host: <strong>{meetup.host_name || meetup.hostName || 'Ẩn danh'}</strong></span>
+        <span class="host-info"><Icon name="crown" size={13} class="inline-icon" /> Host: <strong>{meetup.host_name || meetup.hostName || 'Ẩn danh'}</strong></span>
       </div>
     </div>
 
@@ -191,7 +198,7 @@
     <div class="chat-feed-area cartoon-card" bind:this={messagesContainer}>
       {#if messages.length === 0}
         <div class="chat-empty-state">
-          <span class="empty-icon">💬</span>
+          <div class="empty-icon"><Icon name="chat" size={48} /></div>
           <h3>Chưa có tin nhắn nào trong kèo này!</h3>
           <p>Hãy mở lời gửi tin nhắn đầu tiên để thảo luận và hẹn giờ chơi cùng mọi người nhé.</p>
         </div>
@@ -204,7 +211,7 @@
               <div class="message-bubble {isMine ? 'my-bubble' : 'other-bubble'}">
                 <div class="message-author">
                   <span class="author-name">{msg.senderName}</span>
-                  {#if isHostMsg}<span class="host-badge">👑 Host</span>{/if}
+                  {#if isHostMsg}<span class="host-badge"><Icon name="crown" size={11} /> Host</span>{/if}
                 </div>
                 <div class="message-text">{msg.text}</div>
                 <div class="message-time">{formatTime(msg.createdAt)}</div>
@@ -227,12 +234,13 @@
             disabled={isSending}
           />
           <button type="submit" class="btn btn-primary send-btn" disabled={!newMessageText.trim() || isSending}>
-            {isSending ? '...' : 'Gửi 🚀'}
+            <Icon name="rocket" size={16} class="inline-icon" />
+            <span>{isSending ? '...' : 'Gửi'}</span>
           </button>
         </form>
       {:else}
         <div class="login-chat-prompt">
-          🔒 Bạn cần đăng nhập ở tab <strong>Hồ sơ</strong> để gửi tin nhắn chat.
+          <Icon name="lock" size={14} class="inline-icon" /> Bạn cần đăng nhập ở tab <strong>Hồ sơ</strong> để gửi tin nhắn chat.
         </div>
       {/if}
     </div>
@@ -248,28 +256,48 @@
     gap: 16px;
     margin-bottom: 20px;
   }
+
   @media (max-width: 768px) {
     .fullscreen-chat-view { height: calc(100vh - 80px); }
   }
+
   .no-chat-card { margin: auto; text-align: center; padding: 40px; background-color: #fff; }
-  .access-denied-card { margin: auto; text-align: center; padding: 40px 24px; background-color: #fffefb; max-width: 480px; display: flex; flex-direction: column; align-items: center; gap: 16px; }
-  .lock-big-icon { font-size: 3.5rem; }
+
+  .access-denied-card {
+    margin: auto;
+    text-align: center;
+    padding: 40px 24px;
+    background-color: #fffefb;
+    max-width: 480px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .lock-big-icon {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: var(--text-dark);
+  }
+
   .access-denied-card h3 { font-size: 1.5rem; margin: 0; }
   .access-denied-card p { font-size: 0.95rem; font-weight: 600; color: var(--text-muted); line-height: 1.5; margin: 0; }
   .access-action-box { margin-top: 12px; display: flex; flex-direction: column; align-items: center; gap: 14px; width: 100%; }
   .action-btn-group { display: flex; gap: 12px; width: 100%; justify-content: center; }
-  .action-btn-group .btn { flex: 1; }
-  .pending-status-pill { padding: 10px 16px; background-color: var(--pastel-yellow); border: var(--border-width) solid var(--color-border); border-radius: var(--radius-md); font-weight: 800; font-size: 0.9rem; box-shadow: 3px 3px 0 var(--color-border); }
+  .action-btn-group .btn { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+  .pending-status-pill { padding: 10px 16px; background-color: var(--pastel-yellow); border: var(--border-width) solid var(--color-border); border-radius: var(--radius-md); font-weight: 800; font-size: 0.9rem; box-shadow: 3px 3px 0 var(--color-border); display: inline-flex; align-items: center; gap: 6px; }
   .chat-top-nav { background-color: var(--pastel-cyan); display: flex; align-items: center; gap: 16px; padding: 14px 20px; border-radius: var(--radius-lg); box-shadow: 4px 4px 0 var(--color-border); flex-shrink: 0; }
   .back-btn { padding: 8px 16px !important; font-size: 0.95rem !important; white-space: nowrap; }
   .chat-nav-details { display: flex; flex-direction: column; gap: 2px; text-align: left; flex: 1; min-width: 0; }
   .chat-title-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
   .chat-meetup-title { font-size: 1.3rem; font-weight: 800; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-dark); }
-  .game-badge { font-size: 0.82rem; font-weight: 800; background-color: var(--pastel-yellow); padding: 2px 10px; border: var(--border-width-sm) solid var(--color-border); border-radius: var(--radius-sm); box-shadow: 1.5px 1.5px 0 var(--color-border); }
-  .host-info { font-size: 0.85rem; font-weight: 600; color: var(--text-dark); }
+  .game-badge { font-size: 0.82rem; font-weight: 800; background-color: var(--pastel-yellow); padding: 2px 10px; border: var(--border-width-sm) solid var(--color-border); border-radius: var(--radius-sm); box-shadow: 1.5px 1.5px 0 var(--color-border); display: inline-flex; align-items: center; gap: 4px; }
+  .host-info { font-size: 0.85rem; font-weight: 600; color: var(--text-dark); display: inline-flex; align-items: center; gap: 4px; }
   .chat-feed-area { flex: 1; background-color: var(--bg-primary); overflow-y: auto; padding: 20px; display: flex; flex-direction: column; border-radius: var(--radius-lg); box-shadow: 4px 4px 0 var(--color-border); }
   .chat-empty-state { margin: auto; text-align: center; padding: 40px 20px; color: var(--text-muted); }
-  .empty-icon { font-size: 3.5rem; display: block; margin-bottom: 12px; }
+  .empty-icon { display: flex; justify-content: center; align-items: center; margin-bottom: 12px; color: var(--text-muted); }
   .chat-empty-state h3 { font-size: 1.3rem; margin-bottom: 8px; color: var(--text-dark); }
   .chat-empty-state p { font-size: 0.95rem; font-weight: 600; max-width: 360px; margin: 0 auto; }
   .messages-list { display: flex; flex-direction: column; gap: 16px; width: 100%; }
@@ -282,13 +310,13 @@
   .other-bubble { background-color: #fff; border-bottom-left-radius: 4px; }
   .message-author { display: flex; align-items: center; gap: 6px; }
   .author-name { font-size: 0.82rem; font-weight: 800; color: var(--text-dark); }
-  .host-badge { font-size: 0.7rem; font-weight: 800; background-color: var(--pastel-yellow); border: 1.5px solid var(--color-border); padding: 1px 6px; border-radius: 100px; }
+  .host-badge { font-size: 0.7rem; font-weight: 800; background-color: var(--pastel-yellow); border: 1.5px solid var(--color-border); padding: 1px 6px; border-radius: 100px; display: inline-flex; align-items: center; gap: 2px; }
   .message-text { font-size: 1rem; font-weight: 600; color: var(--text-dark); word-break: break-word; line-height: 1.4; }
   .message-time { font-size: 0.72rem; font-weight: 700; color: var(--text-muted); align-self: flex-end; }
   .chat-bottom-bar { background-color: #fff; padding: 14px 20px; border-radius: var(--radius-lg); box-shadow: 4px 4px 0 var(--color-border); flex-shrink: 0; }
   .chat-input-form { display: flex; width: 100%; gap: 12px; }
   .cartoon-chat-input { flex: 1; padding: 12px 16px; font-family: var(--font-family); font-size: 1rem; font-weight: 600; border-radius: var(--radius-md); border: var(--border-width) solid var(--color-border); background-color: var(--bg-secondary); outline: none; box-shadow: 3px 3px 0 var(--color-border); transition: all 0.15s ease; }
   .cartoon-chat-input:focus { background-color: #fff; box-shadow: 4px 4px 0 var(--color-border); }
-  .send-btn { padding: 12px 24px !important; font-size: 1rem !important; white-space: nowrap; }
-  .login-chat-prompt { width: 100%; text-align: center; font-size: 0.9rem; font-weight: 700; color: var(--text-muted); padding: 6px 0; }
+  .send-btn { padding: 12px 24px !important; font-size: 1rem !important; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
+  .login-chat-prompt { width: 100%; text-align: center; font-size: 0.9rem; font-weight: 700; color: var(--text-muted); padding: 6px 0; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
 </style>

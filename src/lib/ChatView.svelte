@@ -11,6 +11,7 @@
   } from 'firebase/firestore';
   import { onAuthStateChanged, type User } from 'firebase/auth';
   import { db, auth } from './firebase';
+  import Icon from './Icon.svelte';
 
   import { 
     isApprovedMember, 
@@ -170,7 +171,7 @@
 <div class="fullscreen-chat-view">
   {#if !meetup}
     <div class="cartoon-card no-chat-card">
-      <h3>Chưa chọn kèo chơi nào! 😢</h3>
+      <h3>Chưa chọn kèo chơi nào!</h3>
       <button class="btn btn-primary" onclick={onBack}>Quay lại danh sách kèo</button>
     </div>
   {:else if !hasChatAccess}
@@ -183,38 +184,40 @@
       <div class="chat-nav-details">
         <div class="chat-title-row">
           <h2 class="chat-meetup-title">{meetup.title}</h2>
-          <span class="game-badge">🎲 {meetup.game}</span>
+          <span class="game-badge"><Icon name="dice" size={13} class="inline-icon" /> {meetup.game}</span>
         </div>
         <span class="host-info">
-          👑 Host: <strong>{meetup.host_name || meetup.hostName || 'Ẩn danh'}</strong>
+          <Icon name="crown" size={13} class="inline-icon" /> Host: <strong>{meetup.host_name || meetup.hostName || 'Ẩn danh'}</strong>
         </span>
       </div>
     </div>
 
     <!-- Access Denied Private Lock Screen -->
     <div class="cartoon-card access-denied-card">
-      <span class="lock-big-icon">🔒</span>
+      <div class="lock-big-icon"><Icon name="lock" size={48} /></div>
       <h3>Phòng Chat Riêng Tư</h3>
       <p>Chỉ những người chơi đã được Host phê duyệt vào kèo mới có quyền xem và nhắn tin trong phòng chat này.</p>
 
       <div class="access-action-box">
         {#if !currentUser}
-          <p class="prompt-text">💡 Hãy đăng nhập ở tab <strong>Hồ sơ</strong> để gửi yêu cầu tham gia kèo.</p>
+          <p class="prompt-text"><Icon name="sparkles" size={16} class="inline-icon" /> Hãy đăng nhập ở tab <strong>Hồ sơ</strong> để gửi yêu cầu tham gia kèo.</p>
           <button class="btn btn-primary" onclick={onBack}>Quay lại danh sách kèo</button>
         {:else if myRequest?.status === 'pending'}
           <div class="pending-status-pill">
-            ⏳ Yêu cầu của bạn đang chờ Host xét duyệt...
+            <Icon name="clock" size={16} class="inline-icon" /> Yêu cầu của bạn đang chờ Host xét duyệt...
           </div>
           <div class="action-btn-group">
             <button class="btn btn-secondary" onclick={handleCancelRequest} disabled={isRequesting}>
-              {isRequesting ? '...' : 'Hủy yêu cầu ✖'}
+              <Icon name="x" size={15} class="inline-icon" />
+              <span>{isRequesting ? '...' : 'Hủy yêu cầu'}</span>
             </button>
             <button class="btn btn-primary" onclick={onBack}>Quay lại danh sách</button>
           </div>
         {:else}
           <div class="action-btn-group">
             <button class="btn btn-success" onclick={handleSendJoinRequest} disabled={isRequesting}>
-              {isRequesting ? 'Đang gửi...' : 'Gửi yêu cầu tham gia kèo 🤝'}
+              <Icon name="handshake" size={15} class="inline-icon" />
+              <span>{isRequesting ? 'Đang gửi...' : 'Gửi yêu cầu tham gia kèo'}</span>
             </button>
             <button class="btn btn-primary" onclick={onBack}>Quay lại danh sách</button>
           </div>
@@ -231,10 +234,10 @@
       <div class="chat-nav-details">
         <div class="chat-title-row">
           <h2 class="chat-meetup-title">{meetup.title}</h2>
-          <span class="game-badge">🎲 {meetup.game}</span>
+          <span class="game-badge"><Icon name="dice" size={13} class="inline-icon" /> {meetup.game}</span>
         </div>
         <span class="host-info">
-          👑 Host: <strong>{meetup.host_name || meetup.hostName || 'Ẩn danh'}</strong>
+          <Icon name="crown" size={13} class="inline-icon" /> Host: <strong>{meetup.host_name || meetup.hostName || 'Ẩn danh'}</strong>
         </span>
       </div>
     </div>
@@ -244,7 +247,7 @@
     <div class="chat-feed-area cartoon-card" bind:this={messagesContainer}>
       {#if messages.length === 0}
         <div class="chat-empty-state">
-          <span class="empty-icon">💬</span>
+          <div class="empty-icon"><Icon name="chat" size={48} /></div>
           <h3>Chưa có tin nhắn nào trong kèo này!</h3>
           <p>Hãy mở lời gửi tin nhắn đầu tiên để thảo luận và hẹn giờ chơi cùng mọi người nhé.</p>
         </div>
@@ -259,7 +262,7 @@
                 <div class="message-author">
                   <span class="author-name">{msg.senderName}</span>
                   {#if isHost}
-                    <span class="host-badge">👑 Host</span>
+                    <span class="host-badge"><Icon name="crown" size={11} /> Host</span>
                   {/if}
                 </div>
                 <div class="message-text">{msg.text}</div>
@@ -287,12 +290,13 @@
             class="btn btn-primary send-btn" 
             disabled={!newMessageText.trim() || isSending}
           >
-            {isSending ? '...' : 'Gửi 🚀'}
+            <Icon name="rocket" size={16} class="inline-icon" />
+            <span>{isSending ? '...' : 'Gửi'}</span>
           </button>
         </form>
       {:else}
         <div class="login-chat-prompt">
-          <span>🔒 Bạn cần đăng nhập ở tab <strong>Hồ sơ</strong> để gửi tin nhắn chat.</span>
+          <span><Icon name="lock" size={14} class="inline-icon" /> Bạn cần đăng nhập ở tab <strong>Hồ sơ</strong> để gửi tin nhắn chat.</span>
         </div>
       {/if}
     </div>

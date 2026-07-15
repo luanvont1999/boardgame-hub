@@ -8,6 +8,7 @@
     type MeetupRequest 
   } from '../lib/meetupService';
   import { goBack } from '../lib/router.svelte';
+  import Icon from '../lib/Icon.svelte';
 
   interface Meetup {
     id: string;
@@ -102,7 +103,7 @@
 <div class="fullscreen-route-view manage-route">
   {#if !meetup}
     <div class="cartoon-card no-meetup-card">
-      <h3>Chưa chọn kèo chơi để quản lý! 😢</h3>
+      <h3>Chưa chọn kèo chơi để quản lý!</h3>
       <button class="btn btn-primary" onclick={goBack}>Quay lại danh sách kèo</button>
     </div>
   {:else}
@@ -112,7 +113,9 @@
         ← Quay lại
       </button>
       <div class="nav-title-group">
-        <h2>👥 Bảng Quản Lý Thành Viên Kèo</h2>
+        <h2>
+          <Icon name="users" size={22} class="inline-icon" /> Bảng Quản Lý Thành Viên Kèo
+        </h2>
         <span class="sub-title">Host: {meetup.hostName || meetup.host_name || 'Ẩn danh'} • Kèo: {meetup.title}</span>
       </div>
     </div>
@@ -120,15 +123,19 @@
     <!-- Manage Body Card -->
     <div class="cartoon-card manage-body-card">
       <div class="summary-bar">
-        <span class="meetup-name-badge">🎲 Game: <strong>{meetup.game}</strong></span>
+        <span class="meetup-name-badge">
+          <Icon name="dice" size={16} class="inline-icon" /> Game: <strong>{meetup.game}</strong>
+        </span>
         <span class="player-count-badge">
-          👥 Sĩ số: <strong>{meetup.playersCount || meetup.players_count || 1} / {meetup.playersNeeded || meetup.players_needed || 4} người</strong>
+          <Icon name="users" size={16} class="inline-icon" /> Sĩ số: <strong>{meetup.playersCount || meetup.players_count || 1} / {meetup.playersNeeded || meetup.players_needed || 4} người</strong>
         </span>
       </div>
 
       <!-- Pending Section -->
       <div class="members-block">
-        <h3 class="block-title">⏳ Yêu cầu tham gia mới ({pendingRequests.length}):</h3>
+        <h3 class="block-title">
+          <Icon name="clock" size={18} class="inline-icon" /> Yêu cầu tham gia mới ({pendingRequests.length}):
+        </h3>
 
         {#if pendingRequests.length === 0}
           <div class="empty-list-box">
@@ -139,7 +146,7 @@
             {#each pendingRequests as req (req.uid)}
               <div class="member-item-card pending-item">
                 <div class="user-profile-row">
-                  <span class="user-icon">👤</span>
+                  <span class="user-icon"><Icon name="user" size={18} /></span>
                   <span class="user-name">{req.name}</span>
                 </div>
 
@@ -149,14 +156,14 @@
                     onclick={() => handleApprove(req.uid)}
                     disabled={isProcessing}
                   >
-                    Duyệt vào kèo ✅
+                    <Icon name="check" size={14} class="inline-icon" /> Duyệt vào kèo
                   </button>
                   <button 
                     class="btn btn-secondary action-sm-btn" 
                     onclick={() => handleReject(req.uid)}
                     disabled={isProcessing}
                   >
-                    Từ chối ❌
+                    <Icon name="x" size={14} class="inline-icon" /> Từ chối
                   </button>
                 </div>
               </div>
@@ -167,7 +174,9 @@
 
       <!-- Approved Members Section -->
       <div class="members-block" style="margin-top: 32px;">
-        <h3 class="block-title">✅ Thành viên đã được duyệt ({approvedRequests.length}):</h3>
+        <h3 class="block-title">
+          <Icon name="check-circle" size={18} class="inline-icon" /> Thành viên đã được duyệt ({approvedRequests.length}):
+        </h3>
 
         {#if approvedRequests.length === 0}
           <div class="empty-list-box">
@@ -178,7 +187,7 @@
             {#each approvedRequests as req (req.uid)}
               <div class="member-item-card approved-item">
                 <div class="user-profile-row">
-                  <span class="user-icon">🎲</span>
+                  <span class="user-icon"><Icon name="user" size={18} /></span>
                   <span class="user-name">{req.name}</span>
                 </div>
 
@@ -187,7 +196,7 @@
                   onclick={() => handleKick(req.uid)}
                   disabled={isProcessing}
                 >
-                  Đuổi khỏi kèo 🚪
+                  <Icon name="log-out" size={14} class="inline-icon" /> Đuổi khỏi kèo
                 </button>
               </div>
             {/each}
@@ -239,6 +248,9 @@
     font-size: 1.3rem;
     font-weight: 800;
     margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
 
   .sub-title {
@@ -270,6 +282,12 @@
     gap: 12px;
   }
 
+  .meetup-name-badge, .player-count-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
   .player-count-badge {
     background-color: #fff;
     padding: 4px 12px;
@@ -288,6 +306,9 @@
     font-size: 1.1rem;
     font-weight: 800;
     color: var(--text-dark);
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
 
   .empty-list-box {
@@ -325,7 +346,9 @@
   }
 
   .user-icon {
-    font-size: 1.3rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .user-name {
@@ -342,6 +365,9 @@
   .action-sm-btn {
     padding: 8px 14px !important;
     font-size: 0.85rem !important;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
   }
 
   .kick-btn {

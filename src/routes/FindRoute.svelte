@@ -11,6 +11,7 @@
     userLng: number | null;
     isTrackingGPS: boolean;
     gpsError: boolean;
+    isLoading?: boolean;
   }
 
   let {
@@ -22,10 +23,12 @@
     userLng,
     isTrackingGPS,
     gpsError,
+    isLoading = false,
   }: Props = $props();
 </script>
 
 <section id="find-route" style="padding-bottom: 40px;">
+  <h2 class="section-title">Tìm kèo xung quanh</h2>
   <!-- Meetup Cards List -->
   <MeetupList
     meetups={filteredMeetups}
@@ -35,6 +38,7 @@
     bind:selectedDistance
     {isTrackingGPS}
     {gpsError}
+    {isLoading}
   />
 </section>
 
