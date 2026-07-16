@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { serve } from "@hono/node-server";
+import { handle } from "hono/vercel";
 import dotenv from "dotenv";
 
 import healthRouter from "./routes/health.routes.js";
@@ -26,12 +27,15 @@ app.route("/", healthRouter);
 app.route("/", meetupRouter);
 app.route("/", notificationRouter);
 
-// Start the Node HTTP server on port 8080
-const port = 8080;
-serve({
-  fetch: app.fetch,
-  port: port,
-});
+// Start the Node HTTP server on port 8080 only when running locally (outside Vercel)
+if (!process.env.VERCEL) {
+  const port = 8080;
+  serve({
+    fetch: app.fetch,
+    port: port,
+  });
+  console.log(`Server Hono/Node.js MVC (Local) đang chạy tại http://localhost:${port}...`);
+}
 
-console.log(`Server Hono/Node.js MVC đang chạy tại http://localhost:${port}...`);
-export default app;
+// Vercel serverless function handler
+export default handle(app);
