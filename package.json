@@ -9,7 +9,8 @@
     "dev:backend": "npm --prefix backend run dev",
     "build": "vite build",
     "preview": "vite preview",
-    "check": "tsc -p tsconfig.app.json && tsc -p tsconfig.node.json"
+    "check": "tsc -p tsconfig.app.json && tsc -p tsconfig.node.json",
+    "deploy:vercel": "npm run build && npx firebase deploy --only hosting:$VERCEL_ENV --token \"$FIREBASE_TOKEN\""
   },
   "devDependencies": {
     "@types/mapbox-gl": "^3.4.1",
@@ -19,6 +20,7 @@
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
     "concurrently": "^10.0.3",
+    "firebase-tools": "^15.24.0",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.16",
     "typescript": "~6.0.2",
