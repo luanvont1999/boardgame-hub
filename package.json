@@ -4,9 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "concurrently -k -n \"GO,VITE\" -c \"cyan.bold,yellow.bold\" \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev": "concurrently -k -n \"NODE,VITE\" -c \"cyan.bold,yellow.bold\" \"npm run dev:backend\" \"npm run dev:frontend\"",
     "dev:frontend": "vite",
-    "dev:backend": "go run backend/cmd/server/main.go",
+    "dev:backend": "npm --prefix backend run dev",
     "build": "vite build",
     "preview": "vite preview",
     "check": "tsc -p tsconfig.app.json && tsc -p tsconfig.node.json"
